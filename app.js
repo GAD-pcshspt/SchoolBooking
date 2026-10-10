@@ -144,13 +144,42 @@ function getFormOptions() {
 function saveFormOptions(opts) {
   localStorage.setItem(FORM_OPTIONS_KEY, JSON.stringify(opts));
   refreshAllFormOptions();
+  syncFormOptionsToCloud(opts);
+}
+
+let isSyncingOptionsToCloud = false;
+async function syncFormOptionsToCloud(opts) {
+  if (!checkIsSupabaseActive()) return;
+  if (isSyncingOptionsToCloud) return;
+  isSyncingOptionsToCloud = true;
+  try {
+    const record = {
+      id: '__site_form_options__',
+      full_name: '__SITE_FORM_OPTIONS__',
+      purpose: JSON.stringify(opts),
+      status: 'system_config',
+      booking_date: '2099-12-31',
+      room: 'SYSTEM',
+      rooms: []
+    };
+    const { error } = await supabaseClient.from('bookings').upsert(record);
+    if (error) {
+      console.warn('❌ Failed to sync form options to Supabase Cloud:', error);
+    } else {
+      console.log('✅ Form options synced to Supabase Cloud successfully!');
+    }
+  } catch (err) {
+    console.warn('❌ Failed to sync form options to Supabase Cloud:', err);
+  } finally {
+    isSyncingOptionsToCloud = false;
+  }
 }
 
 function resetFormOptionsToDefault() {
   if (!confirm('ต้องการคืนค่าตัวเลือกหน้าจองทั้งหมดเป็นค่าเริ่มต้นใช่หรือไม่?')) return;
   saveFormOptions(DEFAULT_FORM_OPTIONS);
   renderAdminOptionsManager();
-  showToast('🔄 คืนค่าตัวเลือกเริ่มต้นเรียบร้อยแล้ว', 'info');
+  showToast('🔄 คืนค่าตัวเลือกเริ่มต้นเรียบร้อยแล้ว (อัปเดตไปยังระบบคลาวด์ทุกเครื่องแล้ว)', 'info');
 }
 
 function refreshAllFormOptions() {
@@ -637,10 +666,16 @@ function deleteGroupPreset(idx) {
   showToast('🗑️ ลบตัวเลือกเรียบร้อย', 'info');
 }
 
-function saveAdminOptions() {
+async function saveAdminOptions() {
   const options = getFormOptions();
   saveFormOptions(options);
-  showToast('💾 บันทึกการตั้งค่าตัวเลือกหน้าจองทั้งหมดเรียบร้อยแล้ว', 'success');
+  if (checkIsSupabaseActive()) {
+    showToast('⏳ กำลังบันทึกและส่งข้อมูลสถานที่ไปยังคลาวด์...', 'info');
+    await syncFormOptionsToCloud(options);
+    showToast('💾 บันทึกและส่งข้อมูลสถานที่/ตัวเลือกไปยังคลาวด์เรียบร้อย (ทุกเครื่องอัปเดตตรงกันทันที)', 'success');
+  } else {
+    showToast('💾 บันทึกการตั้งค่าตัวเลือกหน้าจองทั้งหมดเรียบร้อยแล้ว', 'success');
+  }
 }
 
 let state = {
@@ -818,9 +853,37 @@ async function fetchGoogleSheetsBookings(silent = false) {
       if (error) throw error;
 
       if (Array.isArray(data)) {
-        if (!silent) console.log(`✅ Loaded ${data.length} bookings from Supabase!`);
+        // 1. ตรวจสอบและดึงข้อมูลตัวเลือก/สถานที่ (Form Options) จาก Cloud
+        const configRow = data.find(row => String(row.id) === '__site_form_options__' || row.status === 'system_config');
+        if (configRow && configRow.purpose) {
+          try {
+            const cloudOpts = JSON.parse(configRow.purpose);
+            if (cloudOpts && typeof cloudOpts === 'object') {
+              const localRaw = localStorage.getItem(FORM_OPTIONS_KEY);
+              if (localRaw !== configRow.purpose) {
+                localStorage.setItem(FORM_OPTIONS_KEY, configRow.purpose);
+                refreshAllFormOptions();
+                if (state.isAdmin && state.adminSection === 'options') {
+                  renderAdminOptionsManager();
+                }
+                console.log('✅ Synchronized form options from Supabase Cloud!');
+              }
+            }
+          } catch (e) {
+            console.error('Failed to parse cloud form options:', e);
+          }
+        } else if (checkIsSupabaseActive()) {
+          // หากบน Cloud ยังไม่มีบันทึกตัวเลือก ให้ส่งค่าจากเครื่องปัจจุบันขึ้น Cloud เป็นค่าเริ่มต้น
+          const curOpts = getFormOptions();
+          syncFormOptionsToCloud(curOpts);
+        }
 
-        const effectiveBookings = data.map(row => {
+        // 2. กรองข้อมูลเฉพาะรายการจองจริง (ไม่รวม system_config)
+        const bookingRows = data.filter(row => String(row.id) !== '__site_form_options__' && row.status !== 'system_config');
+
+        if (!silent) console.log(`✅ Loaded ${bookingRows.length} bookings from Supabase!`);
+
+        const effectiveBookings = bookingRows.map(row => {
           let roomsArr = [];
           try {
             if (Array.isArray(row.rooms)) {
@@ -1031,7 +1094,7 @@ async function sendGoogleSheetsClear(payload = {}) {
     try {
       const mode = payload.mode || 'selected';
       if (mode === 'all') {
-        const { error } = await supabaseClient.from('bookings').delete().neq('id', '___NEVER_MATCH___');
+        const { error } = await supabaseClient.from('bookings').delete().neq('id', '__site_form_options__');
         if (error) throw error;
         updateCloudStatusBadge(true, 'ออนไลน์ (ล้างข้อมูลใน Supabase สำเร็จ)');
         return { success: true, message: 'ล้างข้อมูลทั้งหมดใน Supabase เรียบร้อยแล้ว' };
@@ -3496,6 +3559,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteGroupPreset       = deleteGroupPreset;
   window.saveAdminOptions        = saveAdminOptions;
   window.resetFormOptionsToDefault = resetFormOptionsToDefault;
+  window.syncFormOptionsToCloud  = syncFormOptionsToCloud;
   window.fillPreset              = fillPreset;
   window.handleManagePeriodChange = handleManagePeriodChange;
   window.resetManagePeriod       = resetManagePeriod;
