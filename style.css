@@ -1337,6 +1337,25 @@ input, select, textarea { font-family: var(--font-body); }
   gap: 8px;
   align-items: center;
 }
+.btn-opt-sync {
+  background: var(--navy-800);
+  color: var(--white);
+  border: 1px solid var(--navy-700);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.btn-opt-sync:hover {
+  background: var(--navy-900);
+  transform: translateY(-1px);
+}
 .btn-opt-reset {
   background: var(--gray-100);
   color: var(--gray-700);

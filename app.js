@@ -128,13 +128,15 @@ function getFormOptions() {
     const raw = localStorage.getItem(FORM_OPTIONS_KEY);
     if (!raw) return JSON.parse(JSON.stringify(DEFAULT_FORM_OPTIONS));
     const parsed = JSON.parse(raw);
+    const hasValidCategories = Array.isArray(parsed.venueCategories) && parsed.venueCategories.length > 0;
     return {
       positions: Array.isArray(parsed.positions) ? parsed.positions : DEFAULT_FORM_OPTIONS.positions,
       allowOtherPosition: typeof parsed.allowOtherPosition === 'boolean' ? parsed.allowOtherPosition : true,
       departments: Array.isArray(parsed.departments) ? parsed.departments : DEFAULT_FORM_OPTIONS.departments,
-      venueCategories: Array.isArray(parsed.venueCategories) ? parsed.venueCategories : DEFAULT_FORM_OPTIONS.venueCategories,
+      venueCategories: hasValidCategories ? parsed.venueCategories : DEFAULT_FORM_OPTIONS.venueCategories,
       roomLayouts: Array.isArray(parsed.roomLayouts) ? parsed.roomLayouts : DEFAULT_FORM_OPTIONS.roomLayouts,
       userGroups: Array.isArray(parsed.userGroups) ? parsed.userGroups : DEFAULT_FORM_OPTIONS.userGroups,
+      _updatedAt: Number(parsed._updatedAt) || 0,
     };
   } catch {
     return JSON.parse(JSON.stringify(DEFAULT_FORM_OPTIONS));
@@ -142,42 +144,90 @@ function getFormOptions() {
 }
 
 function saveFormOptions(opts) {
-  localStorage.setItem(FORM_OPTIONS_KEY, JSON.stringify(opts));
+  if (!opts) return;
+  if (!opts._updatedAt) opts._updatedAt = Date.now();
+  try {
+    localStorage.setItem(FORM_OPTIONS_KEY, JSON.stringify(opts));
+  } catch (e) {
+    console.warn('LocalStorage saveFormOptions error:', e);
+  }
   refreshAllFormOptions();
   syncFormOptionsToCloud(opts);
 }
 
+let syncOptionsQueue = null;
 let isSyncingOptionsToCloud = false;
+
 async function syncFormOptionsToCloud(opts) {
-  if (!checkIsSupabaseActive()) return;
-  if (isSyncingOptionsToCloud) return;
+  if (!checkIsSupabaseActive()) return false;
+  if (!opts) opts = getFormOptions();
+  if (!opts._updatedAt) opts._updatedAt = Date.now();
+
+  if (isSyncingOptionsToCloud) {
+    syncOptionsQueue = opts;
+    return true;
+  }
+
   isSyncingOptionsToCloud = true;
   try {
-    const record = {
-      id: '__site_form_options__',
-      full_name: '__SITE_FORM_OPTIONS__',
-      purpose: JSON.stringify(opts),
-      status: 'system_config',
-      booking_date: '2099-12-31',
-      room: 'SYSTEM',
-      rooms: []
-    };
-    const { error } = await supabaseClient.from('bookings').upsert(record);
-    if (error) {
-      console.warn('❌ Failed to sync form options to Supabase Cloud:', error);
+    const purposeStr = JSON.stringify(opts);
+
+    // 1. ลองทำการ update ข้อมูลแถว __site_form_options__ ก่อน
+    const { data: updateData, error: updateErr } = await supabaseClient
+      .from('bookings')
+      .update({
+        purpose: purposeStr,
+        status: 'system_config',
+        full_name: '__SITE_FORM_OPTIONS__',
+        booking_date: '2099-12-31',
+        room: 'SYSTEM',
+        rooms: []
+      })
+      .eq('id', '__site_form_options__')
+      .select('id');
+
+    if (!updateErr && Array.isArray(updateData) && updateData.length > 0) {
+      console.log('✅ Form options updated in Supabase Cloud successfully!');
     } else {
-      console.log('✅ Form options synced to Supabase Cloud successfully!');
+      // 2. หากยังไม่มีแถวนี้ในฐานข้อมูล ให้ทำการ upsert
+      const record = {
+        id: '__site_form_options__',
+        full_name: '__SITE_FORM_OPTIONS__',
+        purpose: purposeStr,
+        status: 'system_config',
+        booking_date: '2099-12-31',
+        room: 'SYSTEM',
+        rooms: []
+      };
+      const { error: upsertErr } = await supabaseClient
+        .from('bookings')
+        .upsert(record, { onConflict: 'id' });
+
+      if (upsertErr) {
+        console.warn('❌ Failed to upsert form options to Supabase Cloud:', upsertErr);
+        return false;
+      }
+      console.log('✅ Form options upserted to Supabase Cloud successfully!');
     }
+    return true;
   } catch (err) {
-    console.warn('❌ Failed to sync form options to Supabase Cloud:', err);
+    console.warn('❌ Exception in syncFormOptionsToCloud:', err);
+    return false;
   } finally {
     isSyncingOptionsToCloud = false;
+    if (syncOptionsQueue) {
+      const nextOpts = syncOptionsQueue;
+      syncOptionsQueue = null;
+      syncFormOptionsToCloud(nextOpts);
+    }
   }
 }
 
 function resetFormOptionsToDefault() {
   if (!confirm('ต้องการคืนค่าตัวเลือกหน้าจองทั้งหมดเป็นค่าเริ่มต้นใช่หรือไม่?')) return;
-  saveFormOptions(DEFAULT_FORM_OPTIONS);
+  const def = JSON.parse(JSON.stringify(DEFAULT_FORM_OPTIONS));
+  def._updatedAt = Date.now();
+  saveFormOptions(def);
   renderAdminOptionsManager();
   showToast('🔄 คืนค่าตัวเลือกเริ่มต้นเรียบร้อยแล้ว (อัปเดตไปยังระบบคลาวด์ทุกเครื่องแล้ว)', 'info');
 }
@@ -498,25 +548,28 @@ function addNewPosition() {
   const options = getFormOptions();
   if (options.positions.includes(val)) { showToast('มีตำแหน่งนี้อยู่ในรายการแล้ว', 'error'); return; }
   options.positions.push(val);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ เพิ่มตำแหน่ง "${val}" เรียบร้อย`, 'success');
+  showToast(`✅ เพิ่มตำแหน่ง "${val}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deletePosition(idx) {
   const options = getFormOptions();
   const removed = options.positions.splice(idx, 1);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast(`🗑️ ลบตำแหน่ง "${removed[0]}" เรียบร้อย`, 'info');
+  showToast(`🗑️ ลบตำแหน่ง "${removed[0]}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 function toggleAllowOtherPosSetting(val) {
   const options = getFormOptions();
   options.allowOtherPosition = Boolean(val);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
-  showToast('💾 บันทึกการตั้งค่าตัวเลือก อื่นๆ เรียบร้อย', 'success');
+  showToast('💾 บันทึกการตั้งค่าตัวเลือก อื่นๆ ขึ้นคลาวด์เรียบร้อย', 'success');
 }
 
 function addNewDepartment() {
@@ -526,18 +579,20 @@ function addNewDepartment() {
   const options = getFormOptions();
   if (options.departments.includes(val)) { showToast('มีฝ่ายงานนี้อยู่ในรายการแล้ว', 'error'); return; }
   options.departments.push(val);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ เพิ่มฝ่ายงาน "${val}" เรียบร้อย`, 'success');
+  showToast(`✅ เพิ่มฝ่ายงาน "${val}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deleteDepartment(idx) {
   const options = getFormOptions();
   const removed = options.departments.splice(idx, 1);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast(`🗑️ ลบฝ่ายงาน "${removed[0]}" เรียบร้อย`, 'info');
+  showToast(`🗑️ ลบฝ่ายงาน "${removed[0]}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 function addRoomToCategory(catIdx) {
@@ -550,19 +605,21 @@ function addRoomToCategory(catIdx) {
   if (rooms.includes(val)) { showToast('มีสถานที่นี้อยู่ในหมวดหมู่นี้แล้ว', 'error'); return; }
   rooms.push(val);
   options.venueCategories[catIdx].rooms = rooms;
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ เพิ่มสถานที่ "${val}" เรียบร้อย`, 'success');
+  showToast(`✅ เพิ่มสถานที่ "${val}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deleteRoom(catIdx, roomIdx) {
   const options = getFormOptions();
   if (!options.venueCategories[catIdx]) return;
   const removed = options.venueCategories[catIdx].rooms.splice(roomIdx, 1);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast(`🗑️ ลบสถานที่ "${removed[0]}" เรียบร้อย`, 'info');
+  showToast(`🗑️ ลบสถานที่ "${removed[0]}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 function addNewCategory() {
@@ -577,10 +634,11 @@ function addNewCategory() {
     rooms: []
   };
   options.venueCategories.push(newCat);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ สร้างหมวดหมู่ "${val}" เรียบร้อย`, 'success');
+  showToast(`✅ สร้างหมวดหมู่ "${val}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deleteCategory(catIdx) {
@@ -589,9 +647,10 @@ function deleteCategory(catIdx) {
   const label = options.venueCategories[catIdx].label;
   if (!confirm(`ต้องการลบหมวดหมู่ "${label}" และสถานที่ทั้งหมดในหมวดหมู่นี้ใช่หรือไม่?`)) return;
   options.venueCategories.splice(catIdx, 1);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast(`🗑️ ลบหมวดหมู่ "${label}" เรียบร้อย`, 'info');
+  showToast(`🗑️ ลบหมวดหมู่ "${label}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 function addClassroomSubRoom(gradeKey) {
@@ -606,10 +665,11 @@ function addClassroomSubRoom(gradeKey) {
   rList.push(val);
   rList.sort((a, b) => parseInt(a) - parseInt(b));
   crCat.grades[gradeKey].rooms = rList;
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ เพิ่มห้อง ${val} เรียบร้อย`, 'success');
+  showToast(`✅ เพิ่มห้อง ${val} และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deleteClassroomSubRoom(gradeKey, roomNum) {
@@ -617,9 +677,10 @@ function deleteClassroomSubRoom(gradeKey, roomNum) {
   const crCat = options.venueCategories.find(c => c.type === 'classroom_grades');
   if (!crCat || !crCat.grades || !crCat.grades[gradeKey]) return;
   crCat.grades[gradeKey].rooms = (crCat.grades[gradeKey].rooms || []).filter(r => r !== roomNum);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast(`🗑️ ลบห้อง ${roomNum} เรียบร้อย`, 'info');
+  showToast(`🗑️ ลบห้อง ${roomNum} และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 function addNewLayoutPreset() {
@@ -630,18 +691,20 @@ function addNewLayoutPreset() {
   options.roomLayouts = options.roomLayouts || [];
   if (options.roomLayouts.includes(val)) { showToast('มีตัวเลือกนี้อยู่แล้ว', 'error'); return; }
   options.roomLayouts.push(val);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ เพิ่มตัวเลือกรูปแบบห้องเรียบร้อย`, 'success');
+  showToast(`✅ เพิ่มตัวเลือกรูปแบบห้องและซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deleteLayoutPreset(idx) {
   const options = getFormOptions();
-  options.roomLayouts.splice(idx, 1);
+  const removed = options.roomLayouts.splice(idx, 1);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast('🗑️ ลบตัวเลือกเรียบร้อย', 'info');
+  showToast(`🗑️ ลบตัวเลือก "${removed[0]}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 function addNewGroupPreset() {
@@ -652,29 +715,65 @@ function addNewGroupPreset() {
   options.userGroups = options.userGroups || [];
   if (options.userGroups.includes(val)) { showToast('มีตัวเลือกนี้อยู่แล้ว', 'error'); return; }
   options.userGroups.push(val);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (input) input.value = '';
   renderAdminOptionsManager();
-  showToast(`✅ เพิ่มตัวเลือกกลุ่มผู้ใช้เรียบร้อย`, 'success');
+  showToast(`✅ เพิ่มตัวเลือกกลุ่มผู้ใช้และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
 }
 
 function deleteGroupPreset(idx) {
   const options = getFormOptions();
-  options.userGroups.splice(idx, 1);
+  const removed = options.userGroups.splice(idx, 1);
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
-  showToast('🗑️ ลบตัวเลือกเรียบร้อย', 'info');
+  showToast(`🗑️ ลบตัวเลือก "${removed[0]}" และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'info');
 }
 
 async function saveAdminOptions() {
   const options = getFormOptions();
+  options._updatedAt = Date.now();
   saveFormOptions(options);
   if (checkIsSupabaseActive()) {
-    showToast('⏳ กำลังบันทึกและส่งข้อมูลสถานที่ไปยังคลาวด์...', 'info');
-    await syncFormOptionsToCloud(options);
-    showToast('💾 บันทึกและส่งข้อมูลสถานที่/ตัวเลือกไปยังคลาวด์เรียบร้อย (ทุกเครื่องอัปเดตตรงกันทันที)', 'success');
+    showToast('⏳ กำลังบันทึกและส่งข้อมูลสถานที่ไปยัง Supabase Cloud...', 'info');
+    const ok = await syncFormOptionsToCloud(options);
+    if (ok) {
+      showToast('💾 บันทึกและส่งข้อมูลสถานที่/ตัวเลือกไปยังคลาวด์เรียบร้อย (ทุกเครื่องอัปเดตตรงกันทันที)', 'success');
+    } else {
+      showToast('⚠️ ไม่สามารถส่งขึ้นคลาวด์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต', 'error');
+    }
   } else {
     showToast('💾 บันทึกการตั้งค่าตัวเลือกหน้าจองทั้งหมดเรียบร้อยแล้ว', 'success');
+  }
+}
+
+async function syncOptionsFromCloudManual() {
+  if (!checkIsSupabaseActive()) {
+    showToast('กรุณาเชื่อมต่อ Supabase ก่อน', 'warning');
+    return;
+  }
+  showToast('⏳ กำลังดึงข้อมูลตัวเลือกและสถานที่ล่าสุดจาก Supabase Cloud...', 'info');
+  try {
+    const { data, error } = await supabaseClient
+      .from('bookings')
+      .select('*')
+      .eq('id', '__site_form_options__');
+    if (error) throw error;
+    if (data && data[0] && data[0].purpose) {
+      const cloudOpts = JSON.parse(data[0].purpose);
+      if (cloudOpts && Array.isArray(cloudOpts.venueCategories) && cloudOpts.venueCategories.length > 0) {
+        localStorage.setItem(FORM_OPTIONS_KEY, JSON.stringify(cloudOpts));
+        refreshAllFormOptions();
+        renderAdminOptionsManager();
+        showToast('✅ ดึงข้อมูลสถานที่และตัวเลือกล่าสุดจากคลาวด์เรียบร้อยแล้ว', 'success');
+        return;
+      }
+    }
+    showToast('ยังไม่มีข้อมูลการตั้งค่าบนคลาวด์', 'info');
+  } catch (err) {
+    console.error('Error fetching options manually:', err);
+    showToast('เกิดข้อผิดพลาดในการดึงข้อมูลจากคลาวด์', 'error');
   }
 }
 
@@ -824,6 +923,30 @@ function initSupabaseRealtime() {
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, (payload) => {
         console.log('⚡ [Supabase Realtime] Booking change detected:', payload.eventType);
+
+        // ดักจับการเปลี่ยนแปลงของข้อมูลตัวเลือกและสถานที่ (Config Row) แบบ Real-time ทันที
+        const row = payload.new;
+        if (row && (String(row.id) === '__site_form_options__' || row.status === 'system_config') && row.purpose) {
+          try {
+            const cloudOpts = JSON.parse(row.purpose);
+            if (cloudOpts && Array.isArray(cloudOpts.venueCategories) && cloudOpts.venueCategories.length > 0) {
+              const localOpts = getFormOptions();
+              const cloudTime = Number(cloudOpts._updatedAt) || 0;
+              const localTime = Number(localOpts._updatedAt) || 0;
+              if (cloudTime >= localTime) {
+                localStorage.setItem(FORM_OPTIONS_KEY, JSON.stringify(cloudOpts));
+                refreshAllFormOptions();
+                if (state.isAdmin && state.adminSection === 'options') {
+                  renderAdminOptionsManager();
+                }
+                console.log('⚡ [Supabase Realtime] Form options immediately updated from Cloud WebSocket!');
+              }
+            }
+          } catch (err) {
+            console.warn('Realtime config parse error:', err);
+          }
+        }
+
         fetchGoogleSheetsBookings(true);
       })
       .subscribe((status) => {
@@ -858,16 +981,39 @@ async function fetchGoogleSheetsBookings(silent = false) {
         if (configRow && configRow.purpose) {
           try {
             const cloudOpts = JSON.parse(configRow.purpose);
-            if (cloudOpts && typeof cloudOpts === 'object') {
-              const localRaw = localStorage.getItem(FORM_OPTIONS_KEY);
-              if (localRaw !== configRow.purpose) {
-                localStorage.setItem(FORM_OPTIONS_KEY, configRow.purpose);
-                refreshAllFormOptions();
-                if (state.isAdmin && state.adminSection === 'options') {
-                  renderAdminOptionsManager();
+            const isValidCloud = Boolean(
+              cloudOpts &&
+              typeof cloudOpts === 'object' &&
+              Array.isArray(cloudOpts.venueCategories) &&
+              cloudOpts.venueCategories.length > 0
+            );
+
+            if (isValidCloud) {
+              const localOpts = getFormOptions();
+              const cloudTime = Number(cloudOpts._updatedAt) || 0;
+              const localTime = Number(localOpts._updatedAt) || 0;
+
+              if (cloudTime >= localTime) {
+                const cloudJson = JSON.stringify(cloudOpts);
+                const localJson = localStorage.getItem(FORM_OPTIONS_KEY);
+                if (localJson !== cloudJson) {
+                  localStorage.setItem(FORM_OPTIONS_KEY, cloudJson);
+                  refreshAllFormOptions();
+                  if (state.isAdmin && state.adminSection === 'options') {
+                    renderAdminOptionsManager();
+                  }
+                  console.log('✅ Synchronized updated form options from Supabase Cloud!');
                 }
-                console.log('✅ Synchronized form options from Supabase Cloud!');
+              } else {
+                // หากเครื่องนี้เพิ่งแก้ไขใหม่กว่าบนคลาวด์ ให้ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์
+                console.log('⚡ Local form options are newer than Cloud, uploading to Cloud...');
+                syncFormOptionsToCloud(localOpts);
               }
+            } else {
+              // หากแถวบนคลาวด์ไม่สมบูรณ์หรือว่างเปล่า ให้ส่งข้อมูลเริ่มต้น/ปัจจุบันจากเครื่องนี้ขึ้นไปซ่อมแซม
+              const curOpts = getFormOptions();
+              console.log('⚡ Cloud config row missing valid categories, repairing Cloud config...');
+              syncFormOptionsToCloud(curOpts);
             }
           } catch (e) {
             console.error('Failed to parse cloud form options:', e);
@@ -3624,6 +3770,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.saveAdminOptions        = saveAdminOptions;
   window.resetFormOptionsToDefault = resetFormOptionsToDefault;
   window.syncFormOptionsToCloud  = syncFormOptionsToCloud;
+  window.syncOptionsFromCloudManual = syncOptionsFromCloudManual;
   window.fillPreset              = fillPreset;
   window.handleManagePeriodChange = handleManagePeriodChange;
   window.resetManagePeriod       = resetManagePeriod;
