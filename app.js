@@ -1782,6 +1782,20 @@ function setCalViewMode(mode) {
   }
 }
 
+function toggleCalScroll() {
+  const wrap = document.getElementById('calendarScrollWrap');
+  const btn = document.getElementById('btnToggleCalScroll');
+  if (!wrap) return;
+  const maxScroll = wrap.scrollWidth - wrap.clientWidth;
+  if (wrap.scrollLeft < maxScroll / 2) {
+    wrap.scrollTo({ left: wrap.scrollWidth, behavior: 'smooth' });
+    if (btn) btn.textContent = '⏪ เลื่อนไปซ้ายสุด';
+  } else {
+    wrap.scrollTo({ left: 0, behavior: 'smooth' });
+    if (btn) btn.textContent = 'เลื่อนไปขวาสุด ⏩';
+  }
+}
+
 function renderCalendar() {
   const { calYear, calMonth } = state;
   const monthDisplay = document.getElementById('calMonthDisplay');
@@ -2011,8 +2025,11 @@ function createDayCell(date, bookings, today, otherMonth) {
             <span class="chip-room">📍 ${escapeHtml(b.room)}</span>
             <span class="chip-meta">⏰ ${b.startTime}–${b.endTime} น. · 👤 ${escapeHtml(b.fullName)}</span>
           `;
-          chip.title = `📍 ${b.room}\n👤 ${b.fullName} (${b.position || '–'}) — ${b.department}\n⏰ ${b.startTime}–${b.endTime} น.\n🎯 ${b.purpose}`;
-          chip.onclick = (e) => { e.stopPropagation(); showDayDetail(date, dayBookings); };
+          chip.title = `📍 ${b.room}\n👤 ${b.fullName} (${b.position || '–'}) — ${b.department}\n⏰ ${b.startTime}–${b.endTime} น.\n🎯 ${b.purpose}\n\n(แตะเพื่อดูรายละเอียดเต็มและพิมพ์ใบจอง)`;
+          chip.onclick = (e) => {
+            e.stopPropagation();
+            viewBookingDetail(b.id);
+          };
           booksEl.appendChild(chip);
         });
 
@@ -2054,17 +2071,22 @@ function showDayDetail(date, dayBookings) {
     body.innerHTML = dayBookings
       .sort((a, b) => a.startTime.localeCompare(b.startTime))
       .map(b => `
-        <div style="border:1px solid ${b.status==='cancelled'?'#e5e7eb':'#fed7aa'};border-left:4px solid ${b.status==='cancelled'?'#9ca3af':'#f97316'};border-radius:10px;padding:14px;margin:12px 16px;background:${b.status==='cancelled'?'#f9fafb':'#fff7ed'};">
+        <div class="day-detail-booking-card" onclick="closeDayDetail(); viewBookingDetail('${b.id}');" style="border:1px solid ${b.status==='cancelled'?'#e5e7eb':'#fed7aa'};border-left:4px solid ${b.status==='cancelled'?'#9ca3af':'#f97316'};border-radius:10px;padding:14px;margin:12px 16px;background:${b.status==='cancelled'?'#f9fafb':'#fff7ed'};cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;" title="แตะเพื่อดูรายละเอียดเต็มและพิมพ์ใบจอง">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <strong style="color:${b.status==='cancelled'?'#6b7280':'#9a3412'};font-size:0.95rem;">📍 ${b.room}</strong>
+            <strong style="color:${b.status==='cancelled'?'#6b7280':'#9a3412'};font-size:0.95rem;">📍 ${escapeHtml(b.room)}</strong>
             <span class="status-badge ${b.status}">${statusLabel(b.status)}</span>
           </div>
           <div style="font-size:0.875rem;color:#374151;line-height:2;">
-            <div>👤 <strong>${b.fullName}</strong> (${b.position}) — ${b.department}</div>
+            <div>👤 <strong>${escapeHtml(b.fullName)}</strong> (${escapeHtml(b.position || '–')}) — ${escapeHtml(b.department || '–')}</div>
             <div>⏰ <strong style="color:#ea580c;">${b.startTime} – ${b.endTime} น.</strong></div>
-            <div>🎯 ${b.purpose}</div>
-            ${b.studentCount ? `<div>👥 จำนวนผู้ใช้ห้อง <strong>${b.studentCount}</strong> คน ${b.grade ? `(ชั้น/กลุ่ม ${b.grade})` : ''}</div>` : ''}
-            ${b.roomLayout ? `<div>📐 รูปแบบการจัดห้อง: ${b.roomLayout}</div>` : ''}
+            <div>🎯 ${escapeHtml(b.purpose || '–')}</div>
+            ${b.studentCount ? `<div>👥 จำนวนผู้ใช้ห้อง <strong>${b.studentCount}</strong> คน ${b.grade ? `(ชั้น/กลุ่ม ${escapeHtml(b.grade)})` : ''}</div>` : ''}
+            ${b.roomLayout ? `<div>📐 รูปแบบการจัดห้อง: ${escapeHtml(b.roomLayout)}</div>` : ''}
+          </div>
+          <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+            <button type="button" class="btn-primary" style="padding:6px 14px;font-size:0.82rem;border-radius:6px;" onclick="event.stopPropagation(); closeDayDetail(); viewBookingDetail('${b.id}');">
+              📋 ดูข้อมูลเต็ม / พิมพ์ใบจอง
+            </button>
           </div>
         </div>
       `).join('');
@@ -3478,6 +3500,25 @@ document.addEventListener('DOMContentLoaded', () => {
   window.handleManagePeriodChange = handleManagePeriodChange;
   window.resetManagePeriod       = resetManagePeriod;
   window.initAdminManagePeriod   = initAdminManagePeriod;
+  window.toggleCalScroll         = toggleCalScroll;
+  window.viewBookingDetail       = viewBookingDetail;
+  window.closeDayDetail          = closeDayDetail;
+
+  // Calendar horizontal scroll listener for toggle button text
+  const calWrap = document.getElementById('calendarScrollWrap');
+  if (calWrap) {
+    calWrap.addEventListener('scroll', () => {
+      const btn = document.getElementById('btnToggleCalScroll');
+      if (!btn) return;
+      const maxScroll = calWrap.scrollWidth - calWrap.clientWidth;
+      if (maxScroll <= 10) return;
+      if (calWrap.scrollLeft > maxScroll * 0.7) {
+        btn.textContent = '⏪ เลื่อนไปซ้ายสุด';
+      } else if (calWrap.scrollLeft < maxScroll * 0.3) {
+        btn.textContent = 'เลื่อนไปขวาสุด ⏩';
+      }
+    }, { passive: true });
+  }
 
   // Close modals on overlay click
   ['adminLoginModal','successModal','bookingDetailModal','editModal','conflictModal','clearDataModal'].forEach(id => {

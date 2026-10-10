@@ -840,6 +840,10 @@ input, select, textarea { font-family: var(--font-body); }
   transform: translateY(-1px);
   box-shadow: 0 2px 5px rgba(0,0,0,0.08);
 }
+.cal-booking-chip:active {
+  transform: scale(0.97);
+  opacity: 0.95;
+}
 
 .cal-booking-chip .chip-room {
   font-weight: 800;
@@ -2469,26 +2473,59 @@ input, select, textarea { font-family: var(--font-body); }
   }
   .cal-mobile-hint {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .cal-mobile-hint .hint-btn {
+    background: var(--navy-800);
+    color: var(--white);
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .cal-mobile-hint .hint-btn:active {
+    background: var(--orange-600);
+  }
+  .calendar-scroll-wrap {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: auto !important;
+    touch-action: auto !important;
+    padding-bottom: 8px !important;
+    padding-right: 30px !important;
+    scroll-padding-right: 30px !important;
   }
   .calendar-grid {
-    min-width: 780px !important;
+    width: max-content !important;
+    min-width: 860px !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
   }
   .cal-weekdays,
   .cal-days {
     display: grid !important;
-    grid-template-columns: repeat(7, minmax(105px, 1fr)) !important;
+    grid-template-columns: repeat(7, minmax(120px, 1fr)) !important;
+    width: 100% !important;
   }
-  .calendar-scroll-wrap {
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-    -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-x pan-y !important;
-    overscroll-behavior-x: contain !important;
-    scroll-behavior: smooth !important;
-    padding-bottom: 6px !important;
+  .cal-day {
+    min-width: 0 !important;
+  }
+  .cal-weekday {
+    padding: 10px 4px !important;
+    font-size: 0.8rem !important;
   }
   .calendar-grid.cal-mode-fit {
     min-width: 0 !important;
+    width: 100% !important;
   }
   .manage-period-bar {
     flex-direction: column;

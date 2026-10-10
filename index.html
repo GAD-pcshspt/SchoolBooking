@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261009_7" />
+  <link rel="stylesheet" href="style.css?v=20261010_5" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
@@ -262,7 +262,8 @@
       </div>
 
       <div class="cal-mobile-hint" id="calMobileHint">
-        <span>↔️ แตะแล้วเลื่อนซ้าย-ขวา เพื่อดูวันทั้งหมดในสัปดาห์</span>
+        <span>↔️ เลื่อนซ้าย-ขวา เพื่อดูวันทั้งหมดในสัปดาห์</span>
+        <button type="button" class="hint-btn" id="btnToggleCalScroll" onclick="toggleCalScroll()" title="กดเพื่อเลื่อนดูวันเสาร์/วันอาทิตย์">เลื่อนไปขวาสุด ⏩</button>
       </div>
 
       <!-- Calendar Scroll Wrapper (Month View) -->
@@ -883,7 +884,7 @@
 
   <!-- Supabase Client & App Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20261010_3"></script>
-  <script src="app.js?v=20261010_3"></script>
+  <script src="supabase-config.js?v=20261010_5"></script>
+  <script src="app.js?v=20261010_5"></script>
 </body>
 </html>
