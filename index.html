@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบจองใช้สถานที่ - โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</title>
+  <meta name="description"
+    content="ระบบจองใช้สถานที่ ฝ่ายบริหารงานทั่วไป โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=20261009_7" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="site-header">
+    <div class="header-bg-pattern"></div>
+    <div class="header-content">
+      <div class="header-logo-wrap">
+        <img src="logo รร ดี.png" alt="Logo โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี" class="school-logo"
+          id="schoolLogo" />
+      </div>
+      <div class="header-text">
+        <h1 class="school-name">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</h1>
+        <p class="dept-name">ฝ่ายบริหารงานทั่วไป</p>
+        <p class="system-title">ระบบจองใช้สถานที่</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-admin-login" id="btnAdminLogin" onclick="showAdminLogin()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+          </svg>
+          เข้าสู่ระบบ Admin
+        </button>
+      </div>
+    </div>
+    <nav class="main-nav" id="mainNav">
+      <a href="#" class="nav-link active" onclick="showPage('booking')" id="navBooking">📝 จองสถานที่</a>
+      <a href="#" class="nav-link" onclick="showPage('calendar')" id="navCalendar">📅 ปฏิทินการจอง</a>
+      <a href="#" class="nav-link admin-only hidden" onclick="showPage('admin')" id="navAdmin">⚙️ จัดการ (Admin)</a>
+      <a href="#" class="nav-link admin-only hidden" onclick="showPage('report')" id="navReport">📊 รายงาน</a>
+      <button type="button" class="btn-nav-refresh" onclick="manualRefreshData()"
+        title="คลิกเพื่อรีเฟรชดึงข้อมูลล่าสุดจาก Google Sheets">
+        🔄 รีเฟรชข้อมูล
+      </button>
+    </nav>
+  </header>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+
+    <!-- ===== PAGE: BOOKING FORM ===== -->
+    <section class="page active" id="pageBooking">
+      <div class="page-header">
+        <h2 class="page-title">
+          <span class="page-title-icon">📝</span>
+          แบบฟอร์มจองใช้สถานที่
+          <span class="cloud-status-tag syncing" onclick="manualRefreshData()" style="cursor:pointer;"
+            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Google Sheets...</span>
+        </h2>
+        <p class="page-subtitle">กรุณากรอกข้อมูลให้ครบถ้วน ระบบจะตรวจสอบการจองซ้ำโดยอัตโนมัติ</p>
+      </div>
+
+      <div class="form-container">
+        <form id="bookingForm" onsubmit="submitBooking(event)" novalidate>
+
+          <!-- Row 1: Name + Position -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="fullName" class="form-label required">ชื่อ-นามสกุล</label>
+              <input type="text" id="fullName" name="fullName" class="form-input" placeholder="กรอกชื่อ-นามสกุล"
+                required />
+              <span class="field-error" id="errFullName"></span>
+            </div>
+            <div class="form-group">
+              <label for="position" class="form-label required">ตำแหน่ง</label>
+              <select id="position" name="position" class="form-select" onchange="toggleOtherPosition()" required>
+                <option value="">-- เลือกตำแหน่ง --</option>
+                <!-- Rendered dynamically by app.js -->
+              </select>
+              <input type="text" id="positionOther" class="form-input mt-8 hidden"
+                placeholder="ระบุตำแหน่งของคุณ... *" />
+              <span class="field-error" id="errPosition"></span>
+            </div>
+          </div>
+
+          <!-- Row 2: Department + Room -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="department" class="form-label required">ฝ่ายงาน</label>
+              <select id="department" name="department" class="form-select" required>
+                <option value="">-- เลือกฝ่ายงาน --</option>
+                <!-- Rendered dynamically by app.js -->
+              </select>
+              <span class="field-error" id="errDepartment"></span>
+            </div>
+            <div class="form-group">
+              <label for="room" class="form-label required">ห้องที่จอง</label>
+              <select id="room" name="room" class="form-select" onchange="handleRoomChange()" required>
+                <option value="">-- เลือกห้อง/สถานที่ --</option>
+                <!-- Rendered dynamically by app.js -->
+              </select>
+
+              <!-- Classroom Multi-select Panel (shown for classroom selections) -->
+              <div id="classroomSelector" class="classroom-selector hidden">
+                <div class="cr-header">
+                  <div class="cr-title">
+                    <span class="cr-icon">🏫</span>
+                    <span>เลือกห้องเรียน (คลิกเลือกได้หลายห้องพร้อมกัน):</span>
+                  </div>
+                  <div class="cr-quick-actions">
+                    <button type="button" class="btn-cr-action" onclick="selectAllCurrentGrade()">✓
+                      เลือกทุกห้องในระดับนี้</button>
+                    <button type="button" class="btn-cr-action clear" onclick="clearClassroomSelection()">✕
+                      ล้างที่เลือก</button>
+                  </div>
+                </div>
+
+                <!-- Grade Tabs (ม.1 – ม.6) -->
+                <div class="cr-grade-tabs" id="crGradeTabs">
+                  <!-- Rendered dynamically by app.js -->
+                </div>
+
+                <!-- Room Checkbox Cards Grid -->
+                <div class="cr-rooms-grid" id="crRoomsGrid"></div>
+
+                <!-- Selected Summary Chips Bar -->
+                <div class="cr-selected-bar">
+                  <span class="cr-selected-label">ห้องที่เลือก:</span>
+                  <div class="cr-selected-chips" id="crSelectedChips">
+                    <span class="cr-no-selection">ยังไม่ได้เลือกห้อง (คลิกเลือกห้องด้านบน)</span>
+                  </div>
+                </div>
+              </div>
+
+              <span class="field-error" id="errRoom"></span>
+            </div>
+          </div>
+
+          <!-- Row 3: Purpose -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="purpose" class="form-label required">วัตถุประสงค์การใช้สถานที่</label>
+              <textarea id="purpose" name="purpose" class="form-textarea" placeholder="กรอกวัตถุประสงค์การใช้สถานที่..."
+                rows="3" required></textarea>
+              <span class="field-error" id="errPurpose"></span>
+            </div>
+          </div>
+
+          <!-- Row 4: Users count + Grade -->
+          <div class="form-row two-col">
+            <div class="form-group">
+              <label for="studentCount" class="form-label required">จำนวนผู้ใช้ห้อง (คน)</label>
+              <input type="number" id="studentCount" name="studentCount" class="form-input" placeholder="เช่น 40, 150"
+                min="1" required />
+              <span class="field-error" id="errStudentCount"></span>
+            </div>
+            <div class="form-group">
+              <label for="grade" class="form-label required">ระดับชั้น / กลุ่มผู้ใช้</label>
+              <input type="text" id="grade" name="grade" class="form-input"
+                placeholder="เช่น ม.4/1, ม.5 ทุกห้อง, คณะครู" required />
+              <div class="preset-chips-wrap" id="userGroupPresets"></div>
+              <span class="field-error" id="errGrade"></span>
+            </div>
+          </div>
+
+          <!-- Row 5: Date & Time -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label required">วันที่และเวลาที่ใช้สถานที่</label>
+              <div class="datetime-row">
+                <div class="datetime-field">
+                  <label for="bookingDate" class="sub-label required">วันที่</label>
+                  <input type="date" id="bookingDate" name="bookingDate" class="form-input" required />
+                </div>
+                <div class="datetime-field">
+                  <label for="startTime" class="sub-label required">เวลาเริ่มต้น</label>
+                  <input type="time" id="startTime" name="startTime" class="form-input" required />
+                </div>
+                <div class="datetime-field">
+                  <label for="endTime" class="sub-label required">เวลาสิ้นสุด</label>
+                  <input type="time" id="endTime" name="endTime" class="form-input" required />
+                </div>
+              </div>
+              <span class="field-error" id="errDateTime"></span>
+            </div>
+          </div>
+
+          <!-- Row 6: Room Layout -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="roomLayout" class="form-label required">รูปแบบการจัดห้อง</label>
+              <input type="text" id="roomLayout" name="roomLayout" class="form-input"
+                placeholder="เช่น โรงภาพยนตร์, ประชุมกลุ่ม, รูปตัว U, จัดตามสภาพห้องเดิม" required />
+              <div class="preset-chips-wrap" id="layoutPresets"></div>
+              <span class="field-error" id="errRoomLayout"></span>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="clearForm()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 .49-3.51" />
+              </svg>
+              ล้างข้อมูล
+            </button>
+            <button type="submit" class="btn-primary" id="btnSubmit">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              ยืนยันการจอง
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: CALENDAR ===== -->
+    <section class="page hidden" id="pageCalendar">
+      <div class="page-header">
+        <h2 class="page-title">
+          <span class="page-title-icon">📅</span>
+          ปฏิทินการจองสถานที่
+          <span class="cloud-status-tag syncing" onclick="manualRefreshData()" style="cursor:pointer;"
+            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Google Sheets...</span>
+        </h2>
+        <p class="page-subtitle">แสดงภาพรวมการจองสถานที่ในแต่ละเดือน คลิกวันเพื่อดูรายละเอียด</p>
+      </div>
+
+      <div class="calendar-controls">
+        <div class="calendar-nav">
+          <button class="btn-cal-nav" onclick="prevMonth()">&#8249;</button>
+          <span class="cal-month-display" id="calMonthDisplay"></span>
+          <button class="btn-cal-nav" onclick="nextMonth()">&#8250;</button>
+        </div>
+        <div class="calendar-view-toggle" id="calViewToggle">
+          <button type="button" class="view-toggle-btn active" id="btnViewScroll" onclick="setCalViewMode('scroll')"
+            title="ตารางเดือนแบบขยายเต็ม เลื่อนซ้าย-ขวาได้">
+            ↔️ ขยายเต็ม (เลื่อนดู)
+          </button>
+          <button type="button" class="view-toggle-btn" id="btnViewList" onclick="setCalViewMode('list')"
+            title="แสดงเป็นมุมมองรายการจองทั้งหมดของเดือน">
+            📋 มุมมองรายการจอง
+          </button>
+        </div>
+        <div class="calendar-filter">
+          <label for="filterRoom" class="filter-label">กรองตามห้อง:</label>
+          <select id="filterRoom" class="form-select" onchange="renderCalendar()">
+            <option value="">ทุกห้อง / ทุกสถานที่</option>
+            <!-- Rendered dynamically by app.js -->
+          </select>
+        </div>
+      </div>
+
+      <div class="cal-mobile-hint" id="calMobileHint">
+        <span>↔️ แตะแล้วเลื่อนซ้าย-ขวา เพื่อดูวันทั้งหมดในสัปดาห์</span>
+      </div>
+
+      <!-- Calendar Scroll Wrapper (Month View) -->
+      <div class="calendar-scroll-wrap cal-mode-scroll" id="calendarScrollWrap">
+        <div class="calendar-grid" id="calendarGrid">
+          <!-- Calendar Days rendered by app.js -->
+        </div>
+      </div>
+
+      <!-- Calendar List View (Alternative Mode) -->
+      <div class="calendar-list-view hidden" id="calendarListView">
+        <div class="calendar-list-container" id="calendarListContainer">
+          <!-- List items rendered by app.js -->
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="calendar-legend">
+        <span class="legend-item"><span class="legend-dot today"></span> วันนี้</span>
+        <span class="legend-item"><span class="legend-dot approved"></span> มีการจอง</span>
+        <span class="legend-item"><span class="legend-dot empty"></span> ว่าง</span>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: ADMIN ===== -->
+    <section class="page hidden" id="pageAdmin">
+      <div class="page-header admin-header">
+        <h2 class="page-title">
+          <span class="page-title-icon">⚙️</span>
+          จัดการการจอง (ผู้ดูแลระบบ)
+          <button class="btn-logout" onclick="doAdminLogout()" title="ออกจากระบบ">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            ออกจากระบบ
+          </button>
+        </h2>
+      </div>
+
+      <div class="admin-stats" id="adminStats"></div>
+
+      <div class="admin-section-tabs">
+        <button class="section-tab active" onclick="switchSection('manage')" id="sectManage">📋 รายการจอง</button>
+        <button class="section-tab" onclick="switchSection('report')" id="sectReport">📊 รายงานสรุป</button>
+        <button class="section-tab" onclick="switchSection('options')" id="sectOptions">⚙️
+          จัดการตัวเลือกหน้าจอง</button>
+        <button class="section-tab" onclick="switchSection('settings')" id="sectSettings">🔐 ตั้งค่า Admin</button>
+      </div>
+
+      <!-- Section: Manage bookings -->
+      <div id="sectionManage">
+        <div class="admin-manage-toolbar">
+          <div class="admin-tabs">
+            <button class="admin-tab active" onclick="switchAdminTab('approved')" id="tabApproved">จองแล้ว <span
+                class="tab-badge" id="approvedBadge">0</span></button>
+            <button class="admin-tab" onclick="switchAdminTab('cancelled')" id="tabCancelled">ยกเลิก</button>
+          </div>
+          <button type="button" class="btn-clear-data prominent" onclick="openClearDataModal()"
+            title="ล้างข้อมูลการจอง (รายวัน, รายสัปดาห์, รายเดือน, ทั้งหมด)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            <span>🗑️ ล้างข้อมูลการจอง</span>
+          </button>
+        </div>
+
+        <!-- Period filter for Manage Bookings (วันที่, สัปดาห์, เดือน, ทั้งหมด) -->
+        <div class="manage-period-bar" id="managePeriodBar">
+          <div class="manage-period-controls">
+            <span class="manage-filter-icon">📅 กรองช่วงเวลา:</span>
+            <select id="managePeriodType" class="form-select manage-filter-select"
+              onchange="handleManagePeriodChange()">
+              <option value="all" selected>ทั้งหมด (ทุกช่วงเวลา)</option>
+              <option value="daily">รายวัน (ระบุวันที่)</option>
+              <option value="weekly">รายสัปดาห์ (ระบุสัปดาห์)</option>
+              <option value="monthly">รายเดือน (ระบุเดือน/ปี)</option>
+            </select>
+
+            <div class="manage-param-wrap hidden" id="manageDateWrap">
+              <input type="date" id="manageDate" class="form-input manage-filter-input" onchange="renderAdminTable()" />
+            </div>
+
+            <div class="manage-param-wrap hidden" id="manageWeekWrap">
+              <input type="week" id="manageWeek" class="form-input manage-filter-input" onchange="renderAdminTable()" />
+            </div>
+
+            <div class="manage-param-wrap hidden" id="manageMonthWrap">
+              <select id="manageMonth" class="form-select manage-filter-select" onchange="renderAdminTable()"></select>
+              <select id="manageYear" class="form-select manage-filter-select" onchange="renderAdminTable()"></select>
+            </div>
+          </div>
+
+          <div class="manage-period-summary">
+            <span class="manage-period-badge" id="managePeriodBadge">แสดงทั้งหมด</span>
+            <button type="button" class="btn-manage-reset" onclick="resetManagePeriod()"
+              title="รีเซ็ตกลับไปแสดงทั้งหมด">
+              🔄 แสดงทั้งหมด
+            </button>
+          </div>
+        </div>
+
+        <div class="history-table-wrap" id="adminTableWrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>ตำแหน่ง</th>
+                <th>ฝ่าย</th>
+                <th>ห้อง</th>
+                <th>วันที่ใช้</th>
+                <th>เวลา</th>
+                <th>วัตถุประสงค์</th>
+                <th>วันที่จอง</th>
+                <th>การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody id="adminBody"></tbody>
+          </table>
+          <div class="empty-state hidden" id="adminEmpty">
+            <div class="empty-icon">📭</div>
+            <p>ไม่มีรายการในหมวดนี้</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Report -->
+      <div id="sectionReport" class="hidden">
+        <div class="report-controls">
+          <div class="report-select-wrap">
+            <label class="form-label">ช่วงเวลา</label>
+            <select id="reportPeriodType" class="form-select" onchange="renderAdminReport()">
+              <option value="daily">รายวัน</option>
+              <option value="weekly">รายสัปดาห์</option>
+              <option value="monthly" selected>รายเดือน</option>
+              <option value="yearly">รายปี</option>
+            </select>
+          </div>
+          <div class="report-select-wrap" id="reportDateWrap">
+            <label class="form-label">วันที่</label>
+            <input type="date" id="reportDate" class="form-input" onchange="renderAdminReport()" />
+          </div>
+          <div class="report-select-wrap hidden" id="reportWeekWrap">
+            <label class="form-label">สัปดาห์</label>
+            <input type="week" id="reportWeek" class="form-input" onchange="renderAdminReport()" />
+          </div>
+          <div class="report-select-wrap hidden" id="reportMonthWrap">
+            <label class="form-label">เดือน</label>
+            <select id="reportMonth" class="form-select" onchange="renderAdminReport()"></select>
+          </div>
+          <div class="report-select-wrap hidden" id="reportYearSelectWrap">
+            <label class="form-label">ปี (พ.ศ.)</label>
+            <select id="reportYear" class="form-select" onchange="renderAdminReport()"></select>
+          </div>
+          <button type="button" class="btn-primary btn-export-pdf" id="btnExportPdf" onclick="exportReportPDF()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span>Export PDF</span>
+          </button>
+          <button type="button" class="btn-print-report" id="btnPrintReport" onclick="printReportDoc()"
+            title="พิมพ์รายงาน หรือ บันทึกเป็น PDF ผ่านหน้าต่างพิมพ์ของเบราว์เซอร์">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>พิมพ์รายงาน / พรีวิว</span>
+          </button>
+        </div>
+
+        <div class="report-summary-cards" id="reportSummaryCards"></div>
+
+        <div class="report-section">
+          <h3 class="report-section-title">รายละเอียดการจองทั้งหมด</h3>
+          <div class="report-table-hint">📱 เลื่อนตารางซ้าย-ขวา เพื่อดูข้อมูลทั้งหมด</div>
+          <div class="report-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th style="text-align:center;">#</th>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th style="text-align:center;">ตำแหน่ง</th>
+                  <th style="text-align:center;">ฝ่าย</th>
+                  <th style="text-align:center;">ห้อง</th>
+                  <th style="text-align:center;">วันที่ใช้</th>
+                  <th style="text-align:center;">เวลา</th>
+                  <th style="text-align:center;">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody id="reportDetailBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="report-section">
+          <h3 class="report-section-title">สรุปการจองแยกตามสถานที่</h3>
+          <div class="report-table-hint">📱 เลื่อนตารางซ้าย-ขวา เพื่อดูข้อมูลทั้งหมด</div>
+          <div class="report-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>ห้อง/สถานที่</th>
+                  <th style="text-align:center;">จำนวนการจอง</th>
+                  <th style="text-align:center;">ชั่วโมงรวม</th>
+                  <th style="text-align:center;">ยกเลิก</th>
+                </tr>
+              </thead>
+              <tbody id="reportRoomBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Options Management (New Feature) -->
+      <div id="sectionOptions" class="hidden">
+        <div class="opt-container">
+          <div class="opt-header-bar">
+            <div class="opt-title-group">
+              <h3>⚙️ จัดการตัวเลือกและหัวข้อในหน้าจอง</h3>
+              <p>ปรับปรุง แก้ไข เพิ่ม หรือตัดออก สถานที่จอง, ตำแหน่ง, ฝ่ายงาน และรูปแบบการจัดห้อง
+                ข้อมูลจะอัปเดตไปยังหน้าจองทันที</p>
+            </div>
+            <div class="opt-actions">
+              <button type="button" class="btn-opt-reset" onclick="resetFormOptionsToDefault()">
+                🔄 คืนค่าเริ่มต้น
+              </button>
+              <button type="button" class="btn-opt-save" onclick="saveAdminOptions()">
+                💾 บันทึกการตั้งค่า
+              </button>
+            </div>
+          </div>
+
+          <!-- Sub-tabs for Form Options -->
+          <div class="opt-sub-tabs">
+            <button type="button" class="opt-sub-tab active" onclick="switchOptSubTab('rooms')" id="optTabRooms">
+              🏢 จัดการห้อง / สถานที่
+            </button>
+            <button type="button" class="opt-sub-tab" onclick="switchOptSubTab('positions')" id="optTabPositions">
+              👥 จัดการตำแหน่ง
+            </button>
+            <button type="button" class="opt-sub-tab" onclick="switchOptSubTab('departments')" id="optTabDepartments">
+              🏛️ จัดการฝ่ายงาน
+            </button>
+            <button type="button" class="opt-sub-tab" onclick="switchOptSubTab('layouts')" id="optTabLayouts">
+              🪑 รูปแบบห้อง & กลุ่มผู้ใช้
+            </button>
+          </div>
+
+          <!-- Sub-panel: Rooms -->
+          <div id="optPanelRooms" class="opt-sub-panel">
+            <div id="optRoomsContainer"></div>
+          </div>
+
+          <!-- Sub-panel: Positions -->
+          <div id="optPanelPositions" class="opt-sub-panel hidden">
+            <div class="opt-card">
+              <div class="opt-card-header">
+                <span class="opt-card-title">👥 รายการตำแหน่งในแบบฟอร์ม</span>
+                <span class="opt-card-badge" id="optPositionCount">0 ตำแหน่ง</span>
+              </div>
+              <div class="opt-card-body">
+                <div class="opt-chips-grid" id="optPositionsGrid"></div>
+                <div class="opt-add-group">
+                  <input type="text" id="newPositionInput" class="opt-add-input"
+                    placeholder="พิมพ์ชื่อตำแหน่งใหม่... เช่น ครูพิเศษ, เจ้าหน้าที่ธุรการ"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addNewPosition();}" />
+                  <button type="button" class="btn-opt-add" onclick="addNewPosition()">➕ เพิ่มตำแหน่ง</button>
+                </div>
+                <div class="opt-switch-row">
+                  <div>
+                    <div class="opt-switch-label">📝 เปิดใช้งานตัวเลือก "อื่น ๆ (ระบุ)"</div>
+                    <div class="opt-switch-desc">หากเปิด ผู้ใช้จะสามารถเลือก "อื่น ๆ"
+                      แล้วพิมพ์ระบุตำแหน่งเองได้ในแบบฟอร์ม</div>
+                  </div>
+                  <label class="opt-toggle">
+                    <input type="checkbox" id="optAllowOtherPos" onchange="toggleAllowOtherPosSetting(this.checked)"
+                      checked />
+                    <span class="opt-toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-panel: Departments -->
+          <div id="optPanelDepartments" class="opt-sub-panel hidden">
+            <div class="opt-card">
+              <div class="opt-card-header">
+                <span class="opt-card-title">🏛️ รายการฝ่ายงานในแบบฟอร์ม</span>
+                <span class="opt-card-badge" id="optDepartmentCount">0 ฝ่ายงาน</span>
+              </div>
+              <div class="opt-card-body">
+                <div class="opt-chips-grid" id="optDepartmentsGrid"></div>
+                <div class="opt-add-group">
+                  <input type="text" id="newDepartmentInput" class="opt-add-input" placeholder="พิมพ์ชื่อฝ่ายงานใหม่..."
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addNewDepartment();}" />
+                  <button type="button" class="btn-opt-add" onclick="addNewDepartment()">➕ เพิ่มฝ่ายงาน</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-panel: Layouts & User Groups -->
+          <div id="optPanelLayouts" class="opt-sub-panel hidden">
+            <div class="opt-card">
+              <div class="opt-card-header">
+                <span class="opt-card-title">🪑 ตัวเลือกด่วน: รูปแบบการจัดห้อง</span>
+                <span class="opt-card-badge" id="optLayoutCount">0 รายการ</span>
+              </div>
+              <div class="opt-card-body">
+                <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:10px;">
+                  ตัวเลือกเหล่านี้จะแสดงเป็นปุ่มลัดใต้ช่องรูปแบบการจัดห้องในหน้าจอง ให้ผู้ใช้คลิกเลือกได้ทันที</p>
+                <div class="opt-chips-grid" id="optLayoutsGrid"></div>
+                <div class="opt-add-group">
+                  <input type="text" id="newLayoutInput" class="opt-add-input"
+                    placeholder="พิมพ์รูปแบบห้องใหม่... เช่น วงกลมสองชั้น"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addNewLayoutPreset();}" />
+                  <button type="button" class="btn-opt-add" onclick="addNewLayoutPreset()">➕ เพิ่มตัวเลือก</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="opt-card" style="margin-top:16px;">
+              <div class="opt-card-header">
+                <span class="opt-card-title">👥 ตัวเลือกด่วน: ระดับชั้น / กลุ่มผู้ใช้</span>
+                <span class="opt-card-badge" id="optGroupCount">0 รายการ</span>
+              </div>
+              <div class="opt-card-body">
+                <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:10px;">
+                  ตัวเลือกเหล่านี้จะแสดงเป็นปุ่มลัดใต้ช่องระดับชั้น/กลุ่มผู้ใช้ในหน้าจอง</p>
+                <div class="opt-chips-grid" id="optGroupsGrid"></div>
+                <div class="opt-add-group">
+                  <input type="text" id="newGroupInput" class="opt-add-input"
+                    placeholder="พิมพ์กลุ่มผู้ใช้ใหม่... เช่น ม.ต้น ทั้งหมด"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();addNewGroupPreset();}" />
+                  <button type="button" class="btn-opt-add" onclick="addNewGroupPreset()">➕ เพิ่มตัวเลือก</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Settings (Change Password & Clear Bookings) -->
+      <div id="sectionSettings" class="hidden">
+        <div class="settings-card">
+          <h3 class="settings-title">🔐 เปลี่ยนรหัสผ่าน Admin</h3>
+          <div class="form-group">
+            <label class="form-label">รหัสผ่านปัจจุบัน</label>
+            <input type="password" id="pwdCurrent" class="form-input" placeholder="รหัสผ่านปัจจุบัน" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">รหัสผ่านใหม่</label>
+            <input type="password" id="pwdNew" class="form-input" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
+            <input type="password" id="pwdConfirm" class="form-input" placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง" />
+          </div>
+          <span class="field-error" id="errPwd"></span>
+          <div style="margin-top:16px">
+            <button class="btn-primary" onclick="changePassword()">💾 บันทึกรหัสผ่านใหม่</button>
+          </div>
+        </div>
+
+        <!-- Section: Data Management (Clear Bookings) -->
+        <div class="settings-card danger-card" style="margin-top:20px;">
+          <h3 class="settings-title" style="color:var(--danger);display:flex;align-items:center;gap:8px;">
+            🗑️ จัดการล้างข้อมูลประวัติการจอง
+          </h3>
+          <p style="font-size:0.875rem;color:var(--gray-600);margin-bottom:14px;line-height:1.5;">
+            สามารถเลือกล้างข้อมูลการจองรายเดือน รายสัปดาห์ รายวัน หรือล้างข้อมูลทั้งหมดออกจากระบบและ Google Sheets
+            ได้ตามต้องการ
+          </p>
+          <button type="button" class="btn-danger-solid" onclick="openClearDataModal()"
+            style="display:inline-flex;align-items:center;gap:8px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+            ล้างข้อมูลประวัติการจอง...
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-dept-name">ฝ่ายบริหารงานทั่วไป</div>
+      <div class="footer-school-name">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัยปทุมธานี</div>
+      <div class="footer-dev-credit">
+        <span class="footer-dev-icon">💻</span>
+        <span class="footer-dev-text">พัฒนาระบบโดยครูชลธีร์ จันทร์ลอย</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- Admin Login Modal -->
+  <div class="modal-overlay hidden" id="adminLoginModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🔐 เข้าสู่ระบบ Admin</h3>
+        <button class="btn-close-modal" onclick="closeAdminLogin()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="adminUser" class="form-label">ชื่อผู้ใช้</label>
+          <input type="text" id="adminUser" class="form-input" placeholder="Username" />
+        </div>
+        <div class="form-group">
+          <label for="adminPass" class="form-label">รหัสผ่าน</label>
+          <input type="password" id="adminPass" class="form-input" placeholder="Password"
+            onkeydown="if(event.key==='Enter')doAdminLogin()" />
+        </div>
+        <span class="field-error" id="errLogin"></span>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAdminLogin()">ยกเลิก</button>
+        <button class="btn-primary" onclick="doAdminLogin()">เข้าสู่ระบบ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Data Modal -->
+  <div class="modal-overlay hidden" id="clearDataModal">
+    <div class="modal-box clear-data-box">
+      <div class="modal-header modal-header-danger">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          ล้างข้อมูลประวัติการจอง
+        </h3>
+        <button class="btn-close-modal" onclick="closeClearDataModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="clear-alert-banner">
+          <div>⚠️ <strong>ข้อควรระวัง:</strong> การล้างข้อมูลจะลบรายการออกจากระบบ และซิงค์ลบแถวออกจาก Google Sheets ด้วย
+            ข้อมูลที่ลบแล้วจะไม่สามารถกู้คืนได้</div>
+          <div
+            style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(220,38,38,0.25);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:0.8rem;">
+            <span id="gasStatusInClearModal">📡 กำลังตรวจสอบการเชื่อมต่อ Google Sheets...</span>
+            <button type="button" onclick="openAppsScriptHelpModal()"
+              style="background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:0.75rem;cursor:pointer;color:var(--gray-700);display:inline-flex;align-items:center;gap:4px;">
+              📖 วิธีอัปเดต Google Apps Script
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:14px;">
+          <label class="form-label required">เลือกรูปแบบการล้างข้อมูล:</label>
+          <div class="clear-scope-options">
+            <label class="scope-radio-label">
+              <input type="radio" name="clearScope" value="all" checked onchange="onClearScopeChange()" />
+              <span><strong>ล้างข้อมูลทั้งหมด</strong> (ทุกช่วงเวลา ทุกรายการ)</span>
+            </label>
+            <label class="scope-radio-label">
+              <input type="radio" name="clearScope" value="monthly" onchange="onClearScopeChange()" />
+              <span><strong>ล้างข้อมูลรายเดือน</strong> (ระบุเดือนและปี)</span>
+            </label>
+            <label class="scope-radio-label">
+              <input type="radio" name="clearScope" value="weekly" onchange="onClearScopeChange()" />
+              <span><strong>ล้างข้อมูลรายสัปดาห์</strong> (ระบุสัปดาห์)</span>
+            </label>
+            <label class="scope-radio-label">
+              <input type="radio" name="clearScope" value="daily" onchange="onClearScopeChange()" />
+              <span><strong>ล้างข้อมูลรายวัน</strong> (ระบุวันที่)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Dynamic Parameter Wrappers -->
+        <div id="clearParamMonthWrap" class="form-row two-col hidden" style="margin-top:10px;">
+          <div class="form-group">
+            <label class="form-label">เลือกเดือน</label>
+            <select id="clearMonthSelect" class="form-select" onchange="updateClearPreview()"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">เลือกปี (พ.ศ.)</label>
+            <select id="clearYearSelect" class="form-select" onchange="updateClearPreview()"></select>
+          </div>
+        </div>
+
+        <div id="clearParamWeekWrap" class="form-group hidden" style="margin-top:10px;">
+          <label class="form-label">เลือกสัปดาห์</label>
+          <input type="week" id="clearWeekInput" class="form-input" onchange="updateClearPreview()" />
+        </div>
+
+        <div id="clearParamDateWrap" class="form-group hidden" style="margin-top:10px;">
+          <label class="form-label">เลือกวันที่</label>
+          <input type="date" id="clearDateInput" class="form-input" onchange="updateClearPreview()" />
+        </div>
+
+        <!-- Filter status option -->
+        <div class="form-group" style="margin-top:14px;">
+          <label class="form-label">สถานะของรายการที่ต้องการล้าง:</label>
+          <select id="clearStatusFilter" class="form-select" onchange="updateClearPreview()">
+            <option value="all">ล้างทุกสถานะ (ทั้งจองแล้วและยกเลิก)</option>
+            <option value="cancelled">ล้างเฉพาะรายการที่ "ยกเลิกแล้ว" เท่านั้น</option>
+            <option value="approved">ล้างเฉพาะรายการที่ "จองแล้ว" เท่านั้น</option>
+          </select>
+        </div>
+
+        <!-- Live Preview Box -->
+        <div class="clear-preview-box" id="clearPreviewBox">
+          <span class="preview-badge" id="clearPreviewCount">กำลังคำนวณ...</span>
+          <span class="preview-text" id="clearPreviewText">รายการที่จะถูกลบ</span>
+        </div>
+
+        <!-- Safety Confirmation Checkbox -->
+        <div class="clear-confirm-check" style="margin-top:16px;">
+          <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.875rem;cursor:pointer;">
+            <input type="checkbox" id="chkConfirmClear" onchange="toggleClearSubmitBtn()" style="margin-top:4px;" />
+            <span>ฉันเข้าใจและยืนยันที่จะลบข้อมูลข้างต้นออกจากระบบและ Google Sheets</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeClearDataModal()">ยกเลิก</button>
+        <button type="button" class="btn-danger-solid" id="btnExecuteClear" onclick="executeClearBookings()" disabled>
+          🗑️ ยืนยันการล้างข้อมูล
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Apps Script Help Modal -->
+  <div class="modal-overlay hidden" id="appsScriptHelpModal">
+    <div class="modal-box" style="max-width:560px;">
+      <div class="modal-header">
+        <h3>📖 วิธีอัปเดต Google Apps Script</h3>
+        <button class="btn-close-modal" onclick="closeAppsScriptHelpModal()">✕</button>
+      </div>
+      <div class="modal-body" style="font-size:0.875rem;line-height:1.6;color:var(--gray-800);">
+        <p style="margin-bottom:12px;">
+          เพื่อให้ระบบสามารถสั่ง <strong>ล้างแถวการจองใน Google Sheet</strong> ได้อย่างสมบูรณ์ กรุณาอัปเดตโค้ด Apps
+          Script ตาม 4 ขั้นตอนนี้ครับ:
+        </p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:12px;">
+          <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;">
+            <li>เปิดไฟล์ <strong>Google Sheets</strong> ของระบบจองสถานที่</li>
+            <li>ไปที่เมนู <strong>ส่วนขยาย (Extensions)</strong> &gt; <strong>Apps Script</strong></li>
+            <li>คัดลอกโค้ดทั้งหมดในไฟล์ <code>GoogleAppsScript_Code.js</code> ไปวางทับโค้ดเดิมทั้งหมด แล้วกดบันทึก 💾
+              (Ctrl+S)</li>
+            <li>
+              คลิกปุ่มสีฟ้า <strong>ทำให้ใช้งานได้ (Deploy)</strong> ด้านบนขวา &gt; เลือก
+              <strong>จัดการการทำให้ใช้งานได้ (Manage deployments)</strong><br>
+              คลิกรูป <strong>ดินสอ ✏️ (แก้ไข / Edit)</strong><br>
+              ตรงหัวข้อ <strong>เวอร์ชัน (Version)</strong> เลือกเป็น <strong>"เวอร์ชันใหม่" (New version)</strong><br>
+              แล้วคลิกปุ่ม <strong>ทำให้ใช้งานได้ (Deploy)</strong> ด้านล่างเพื่อบันทึก
+            </li>
+          </ol>
+        </div>
+        <div
+          style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534;font-size:0.825rem;">
+          💡 <strong>หมายเหตุ:</strong> ข้อมูลบนเว็บถูกล้างเรียบร้อยแล้ว และจะไม่ถูกดึงข้อมูลเก่ากลับมาแสดงอีกครับ เมื่อ
+          Deploy ใน Google Sheets เรียบร้อยแล้ว แถวในชีตก็จะถูกล้างพร้อมกันทันที
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary" onclick="closeAppsScriptHelpModal()">เข้าใจแล้ว</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal-overlay hidden" id="successModal">
+    <div class="modal-box success-modal">
+      <div class="success-icon">✅</div>
+      <h3>จองสำเร็จ!</h3>
+      <p id="successMessage"></p>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeSuccess()">ปิด</button>
+        <button class="btn-primary" onclick="printCurrentBooking()">🖨️ พิมพ์ใบจอง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Detail Modal -->
+  <div class="modal-overlay hidden" id="bookingDetailModal">
+    <div class="modal-box large-modal">
+      <div class="modal-header">
+        <h3>📋 รายละเอียดการจอง</h3>
+        <button class="btn-close-modal" onclick="closeBookingDetail()">✕</button>
+      </div>
+      <div class="modal-body" id="bookingDetailBody"></div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeBookingDetail()">ปิด</button>
+        <button class="btn-primary" onclick="printCurrentDetail()">🖨️ พิมพ์ใบจอง</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Booking Modal -->
+  <div class="modal-overlay hidden" id="editModal">
+    <div class="modal-box large-modal">
+      <div class="modal-header">
+        <h3>✏️ แก้ไขการจอง</h3>
+        <button class="btn-close-modal" onclick="closeEdit()">✕</button>
+      </div>
+      <div class="modal-body" id="editBody"></div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeEdit()">ยกเลิก</button>
+        <button class="btn-primary" onclick="saveEdit()">💾 บันทึก</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conflict Warning Modal -->
+  <div class="modal-overlay hidden" id="conflictModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>⚠️ มีการจองซ้ำกัน!</h3>
+        <button class="btn-close-modal" onclick="closeConflict()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="conflictDetail" class="conflict-detail"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" onclick="closeConflict()">รับทราบ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast hidden" id="toast"><span id="toastMsg"></span></div>
+
+  <!-- Supabase Client & App Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="google-sheets-config.js?v=20261009_6"></script>
+  <script src="app.js?v=20261010_1"></script>
+</body>
+</html>
