@@ -3120,23 +3120,27 @@ async function openClearDataModal() {
   modal.classList.remove('hidden');
   updateClearPreview();
 
-  // ตรวจสอบสถานะการเชื่อมต่อ Google Apps Script สดๆ
+  // ตรวจสอบสถานะการเชื่อมต่อฐานข้อมูลสดๆ
   const statusEl = document.getElementById('gasStatusInClearModal');
   if (statusEl) {
-    statusEl.innerHTML = '⏳ กำลังตรวจสอบการเชื่อมต่อ Google Sheets...';
-    try {
-      const health = await checkGoogleAppsScriptHealth();
-      if (!checkIsGoogleSheetsConfigured()) {
-        statusEl.innerHTML = '⚠️ โหมดออฟไลน์ (ยังไม่ได้ตั้งค่า Google Sheets)';
-      } else if (health.supportsClear) {
-        statusEl.innerHTML = '🟢 <strong>Google Sheets:</strong> พร้อมรองรับการล้างข้อมูล (v' + (health.version || '2.1.0') + ')';
-      } else if (health.online && !health.supportsClear) {
-        statusEl.innerHTML = '🟠 <strong>Google Sheets:</strong> ยังเป็นสคริปต์เวอร์ชันเดิม (ต้องอัปเดตเพื่อลบแถวใน Sheet)';
-      } else {
-        statusEl.innerHTML = '⚪ ไม่สามารถเชื่อมต่อ Google Sheets ได้ขณะนี้ (ล้างข้อมูลเฉพาะบนเว็บ)';
+    if (checkIsSupabaseActive()) {
+      statusEl.innerHTML = '🟢 <strong>Supabase Cloud:</strong> เชื่อมต่อฐานข้อมูล พร้อมลบข้อมูลจริงทันที';
+    } else {
+      statusEl.innerHTML = '⏳ กำลังตรวจสอบการเชื่อมต่อ...';
+      try {
+        const health = await checkGoogleAppsScriptHealth();
+        if (!checkIsGoogleSheetsConfigured()) {
+          statusEl.innerHTML = '⚠️ โหมดออฟไลน์ (ยังไม่ได้ตั้งค่าฐานข้อมูล)';
+        } else if (health.supportsClear) {
+          statusEl.innerHTML = '🟢 <strong>Google Sheets:</strong> พร้อมรองรับการล้างข้อมูล (v' + (health.version || '2.1.0') + ')';
+        } else if (health.online && !health.supportsClear) {
+          statusEl.innerHTML = '🟠 <strong>Google Sheets:</strong> ยังเป็นสคริปต์เวอร์ชันเดิม (ต้องอัปเดตเพื่อลบแถวใน Sheet)';
+        } else {
+          statusEl.innerHTML = '⚪ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ขณะนี้ (ล้างข้อมูลเฉพาะบนเว็บ)';
+        }
+      } catch (_) {
+        statusEl.innerHTML = '⚪ ตรวจสอบการเชื่อมต่อฐานข้อมูลไม่สำเร็จ';
       }
-    } catch (_) {
-      statusEl.innerHTML = '⚪ ตรวจสอบการเชื่อมต่อ Google Sheets ไม่สำเร็จ';
     }
   }
 }
@@ -3277,7 +3281,9 @@ function updateClearPreview() {
     if (target.length === 0) {
       textEl.textContent = 'ไม่พบข้อมูลที่ตรงกับเงื่อนไขที่เลือก';
     } else {
-      textEl.textContent = `รายการที่จะถูกลบออกจากระบบและ Google Sheets`;
+      textEl.textContent = checkIsSupabaseActive()
+        ? `รายการที่จะถูกลบออกจากระบบและฐานข้อมูล Supabase`
+        : `รายการที่จะถูกลบออกจากระบบและ Google Sheets`;
     }
   }
 
@@ -3317,7 +3323,7 @@ async function executeClearBookings() {
   }
 
   try {
-    // 1. นำข้อมูลออกจากระบบในเครื่องทันที และบันทึก ID ที่ลบลงในแคชป้องกันการดึงกลับ
+    // 1. นำข้อมูลออกจากระบบในเครื่องทันที และบันทึก ID ที่ลบลงในแคช
     const currentBookings = getBookings();
     const remaining = isFullWipe ? [] : currentBookings.filter(b => {
       const bId = String(b.id !== null && b.id !== undefined ? b.id : '').trim();
@@ -3326,15 +3332,21 @@ async function executeClearBookings() {
     saveBookings(remaining);
     addDeletedIds(targetIds);
 
-    // 2. รีเฟรชตารางหน้า Admin และ ปฏิทิน ทันที (ผู้ใช้จะเห็นว่าข้อมูลหายไปทันที)
+    // 2. รีเฟรชตารางหน้า Admin และ ปฏิทิน ทันที
     renderAdmin();
     renderCalendar();
 
-    // 3. ซิงค์คำสั่งล้างข้อมูลไปยัง Google Sheets
-    let sheetResult = null;
-    if (checkIsGoogleSheetsConfigured()) {
+    // 3. ซิงค์คำสั่งล้างข้อมูลไปยัง Supabase / Cloud
+    let clearResult = null;
+    if (checkIsSupabaseActive()) {
+      showToast('กำลังลบข้อมูลออกจาก Supabase Cloud...', 'info');
+      clearResult = await sendGoogleSheetsClear({
+        mode: isFullWipe ? 'all' : 'selected',
+        ids: targetIds
+      });
+    } else if (checkIsGoogleSheetsConfigured()) {
       showToast('กำลังล้างข้อมูลใน Google Sheets...', 'info');
-      sheetResult = await sendGoogleSheetsClear({
+      clearResult = await sendGoogleSheetsClear({
         mode: isFullWipe ? 'all' : 'selected',
         ids: targetIds
       });
@@ -3342,12 +3354,14 @@ async function executeClearBookings() {
 
     closeClearDataModal();
 
-    if (sheetResult && sheetResult.success) {
-      showToast(`ล้างข้อมูลทั้งบนเว็บและ Google Sheets สำเร็จ (${targetIds.length} รายการ) 🗑️`, 'success');
-    } else if (checkIsGoogleSheetsConfigured() && sheetResult && !sheetResult.success) {
-      showToast(`ล้างข้อมูลบนเว็บเรียบร้อยแล้ว (${targetIds.length} รายการ)`, 'warning');
-      // แสดงคู่มืออัปเดต Google Apps Script
-      openAppsScriptHelpModal();
+    if (clearResult && clearResult.success) {
+      const dbLabel = checkIsSupabaseActive() ? 'Supabase' : 'Google Sheets';
+      showToast(`ล้างข้อมูลทั้งบนเว็บและ ${dbLabel} สำเร็จ (${targetIds.length} รายการ) 🗑️`, 'success');
+    } else if (clearResult && !clearResult.success) {
+      showToast(`ล้างข้อมูลบนเว็บเรียบร้อยแล้ว (${targetIds.length} รายการ) แต่การลบบนคลาวด์ติดขัด: ${clearResult.message || ''}`, 'warning');
+      if (!checkIsSupabaseActive()) {
+        openAppsScriptHelpModal();
+      }
     } else {
       showToast(`ล้างข้อมูลสำเร็จจำนวน ${targetIds.length} รายการ 🗑️`, 'success');
     }

@@ -47,7 +47,7 @@
       <a href="#" class="nav-link admin-only hidden" onclick="showPage('admin')" id="navAdmin">⚙️ จัดการ (Admin)</a>
       <a href="#" class="nav-link admin-only hidden" onclick="showPage('report')" id="navReport">📊 รายงาน</a>
       <button type="button" class="btn-nav-refresh" onclick="manualRefreshData()"
-        title="คลิกเพื่อรีเฟรชดึงข้อมูลล่าสุดจาก Google Sheets">
+        title="คลิกเพื่อรีเฟรชดึงข้อมูลล่าสุดจาก Supabase">
         🔄 รีเฟรชข้อมูล
       </button>
     </nav>
@@ -63,7 +63,7 @@
           <span class="page-title-icon">📝</span>
           แบบฟอร์มจองใช้สถานที่
           <span class="cloud-status-tag syncing" onclick="manualRefreshData()" style="cursor:pointer;"
-            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Google Sheets...</span>
+            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Supabase...</span>
         </h2>
         <p class="page-subtitle">กรุณากรอกข้อมูลให้ครบถ้วน ระบบจะตรวจสอบการจองซ้ำโดยอัตโนมัติ</p>
       </div>
@@ -231,7 +231,7 @@
           <span class="page-title-icon">📅</span>
           ปฏิทินการจองสถานที่
           <span class="cloud-status-tag syncing" onclick="manualRefreshData()" style="cursor:pointer;"
-            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Google Sheets...</span>
+            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Supabase...</span>
         </h2>
         <p class="page-subtitle">แสดงภาพรวมการจองสถานที่ในแต่ละเดือน คลิกวันเพื่อดูรายละเอียด</p>
       </div>
@@ -641,7 +641,7 @@
             🗑️ จัดการล้างข้อมูลประวัติการจอง
           </h3>
           <p style="font-size:0.875rem;color:var(--gray-600);margin-bottom:14px;line-height:1.5;">
-            สามารถเลือกล้างข้อมูลการจองรายเดือน รายสัปดาห์ รายวัน หรือล้างข้อมูลทั้งหมดออกจากระบบและ Google Sheets
+            สามารถเลือกล้างข้อมูลการจองรายเดือน รายสัปดาห์ รายวัน หรือล้างข้อมูลทั้งหมดออกจากระบบและฐานข้อมูล Supabase
             ได้ตามต้องการ
           </p>
           <button type="button" class="btn-danger-solid" onclick="openClearDataModal()"
@@ -716,15 +716,11 @@
       </div>
       <div class="modal-body">
         <div class="clear-alert-banner">
-          <div>⚠️ <strong>ข้อควรระวัง:</strong> การล้างข้อมูลจะลบรายการออกจากระบบ และซิงค์ลบแถวออกจาก Google Sheets ด้วย
+          <div>⚠️ <strong>ข้อควรระวัง:</strong> การล้างข้อมูลจะลบรายการออกจากระบบ และลบออกจากฐานข้อมูล Supabase ทันที
             ข้อมูลที่ลบแล้วจะไม่สามารถกู้คืนได้</div>
           <div
             style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(220,38,38,0.25);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:0.8rem;">
-            <span id="gasStatusInClearModal">📡 กำลังตรวจสอบการเชื่อมต่อ Google Sheets...</span>
-            <button type="button" onclick="openAppsScriptHelpModal()"
-              style="background:#fff;border:1px solid #d1d5db;border-radius:4px;padding:3px 8px;font-size:0.75rem;cursor:pointer;color:var(--gray-700);display:inline-flex;align-items:center;gap:4px;">
-              📖 วิธีอัปเดต Google Apps Script
-            </button>
+            <span id="gasStatusInClearModal">🟢 <strong>Supabase Cloud:</strong> เชื่อมต่อฐานข้อมูลพร้อมลบข้อมูลทันที</span>
           </div>
         </div>
 
@@ -792,7 +788,7 @@
         <div class="clear-confirm-check" style="margin-top:16px;">
           <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.875rem;cursor:pointer;">
             <input type="checkbox" id="chkConfirmClear" onchange="toggleClearSubmitBtn()" style="margin-top:4px;" />
-            <span>ฉันเข้าใจและยืนยันที่จะลบข้อมูลข้างต้นออกจากระบบและ Google Sheets</span>
+            <span>ฉันเข้าใจและยืนยันที่จะลบข้อมูลข้างต้นออกจากระบบและฐานข้อมูล Supabase</span>
           </label>
         </div>
       </div>
@@ -805,38 +801,17 @@
     </div>
   </div>
 
-  <!-- Apps Script Help Modal -->
+  <!-- Cloud Info Modal -->
   <div class="modal-overlay hidden" id="appsScriptHelpModal">
     <div class="modal-box" style="max-width:560px;">
       <div class="modal-header">
-        <h3>📖 วิธีอัปเดต Google Apps Script</h3>
+        <h3>⚡ ระบบฐานข้อมูล Supabase Cloud</h3>
         <button class="btn-close-modal" onclick="closeAppsScriptHelpModal()">✕</button>
       </div>
       <div class="modal-body" style="font-size:0.875rem;line-height:1.6;color:var(--gray-800);">
         <p style="margin-bottom:12px;">
-          เพื่อให้ระบบสามารถสั่ง <strong>ล้างแถวการจองใน Google Sheet</strong> ได้อย่างสมบูรณ์ กรุณาอัปเดตโค้ด Apps
-          Script ตาม 4 ขั้นตอนนี้ครับ:
+          ระบบนี้เชื่อมต่อกับ <strong>Supabase Cloud Database</strong> โดยตรง ข้อมูลการจอง การยกเลิก และการล้างข้อมูลจะถูกบันทึกและลบออกจากเซิร์ฟเวอร์แบบเรียลไทม์ทันที
         </p>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:12px;">
-          <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;">
-            <li>เปิดไฟล์ <strong>Google Sheets</strong> ของระบบจองสถานที่</li>
-            <li>ไปที่เมนู <strong>ส่วนขยาย (Extensions)</strong> &gt; <strong>Apps Script</strong></li>
-            <li>คัดลอกโค้ดทั้งหมดในไฟล์ <code>GoogleAppsScript_Code.js</code> ไปวางทับโค้ดเดิมทั้งหมด แล้วกดบันทึก 💾
-              (Ctrl+S)</li>
-            <li>
-              คลิกปุ่มสีฟ้า <strong>ทำให้ใช้งานได้ (Deploy)</strong> ด้านบนขวา &gt; เลือก
-              <strong>จัดการการทำให้ใช้งานได้ (Manage deployments)</strong><br>
-              คลิกรูป <strong>ดินสอ ✏️ (แก้ไข / Edit)</strong><br>
-              ตรงหัวข้อ <strong>เวอร์ชัน (Version)</strong> เลือกเป็น <strong>"เวอร์ชันใหม่" (New version)</strong><br>
-              แล้วคลิกปุ่ม <strong>ทำให้ใช้งานได้ (Deploy)</strong> ด้านล่างเพื่อบันทึก
-            </li>
-          </ol>
-        </div>
-        <div
-          style="padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534;font-size:0.825rem;">
-          💡 <strong>หมายเหตุ:</strong> ข้อมูลบนเว็บถูกล้างเรียบร้อยแล้ว และจะไม่ถูกดึงข้อมูลเก่ากลับมาแสดงอีกครับ เมื่อ
-          Deploy ใน Google Sheets เรียบร้อยแล้ว แถวในชีตก็จะถูกล้างพร้อมกันทันที
-        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-primary" onclick="closeAppsScriptHelpModal()">เข้าใจแล้ว</button>
@@ -908,8 +883,7 @@
 
   <!-- Supabase Client & App Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js"></script>
-  <script src="google-sheets-config.js?v=20261009_6"></script>
-  <script src="app.js?v=20261010_1"></script>
+  <script src="supabase-config.js?v=20261010_2"></script>
+  <script src="app.js?v=20261010_2"></script>
 </body>
 </html>
