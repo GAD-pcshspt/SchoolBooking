@@ -2845,70 +2845,19 @@ async function exportReportPDF() {
   const bookings    = getReportBookings();
   const type        = document.getElementById('reportPeriodType')?.value || 'monthly';
   const periodLabel = getPeriodLabel(type);
-  const btn         = document.getElementById('btnExportPdf');
-  const origBtnText = btn ? btn.innerHTML : '';
+  const cleanTitle  = `รายงานสรุปการใช้สถานที่_${periodLabel.replace(/[/\\:\*\?"<>\|\s]/g, '_')}`;
 
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '⏳ กำลังสร้างไฟล์ PDF...';
-  }
-
-  showToast('⏳ กำลังสร้างไฟล์รายงาน PDF กรุณารอสักครู่...', 'info');
-
-  const cleanFilename = `รายงานสรุปการใช้สถานที่_${periodLabel.replace(/[/\\:\*\?"<>\|\s]/g, '_')}.pdf`;
-  const reportHtml    = buildReportHTML(bookings, periodLabel);
-
-  if (typeof html2pdf !== 'undefined') {
-    // ติดตั้งลงใน off-screen container ที่ top:0 left:0 เพื่อป้องกัน scroll offset ไม่ให้เกิดช่องว่างสีขาวด้านบน
-    const mount = document.createElement('div');
-    mount.id = 'reportPdfMount';
-    mount.style.cssText = 'position:fixed;top:0;left:0;width:780px;background:#ffffff;z-index:-99999;opacity:1;pointer-events:none;';
-    mount.innerHTML = reportHtml;
-    document.body.appendChild(mount);
-
-    const opt = {
-      margin:       [8, 8, 8, 8],
-      filename:     cleanFilename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        scrollY: 0,
-        scrollX: 0,
-        windowWidth: 794
-      },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['css', 'legacy'] }
-    };
-    try {
-      await html2pdf().set(opt).from(mount).save();
-      showToast('✅ ดาวน์โหลดรายงาน PDF ลงเครื่องเรียบร้อยแล้ว', 'success');
-    } catch (err) {
-      console.error('html2pdf generation error, fallback to print window:', err);
-      printDoc(reportHtml, true);
-    } finally {
-      mount.remove();
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = origBtnText;
-      }
-    }
-  } else {
-    printDoc(reportHtml, true);
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origBtnText;
-    }
-  }
+  showToast('📄 เปิดหน้าต่างรายงานเรียบร้อย — ในหน้าต่างพิมพ์ ให้เลือกปลายทางเป็น "บันทึกเป็น PDF" (Save as PDF) ได้ทันที', 'info');
+  printReportDoc(cleanTitle);
 }
 
-function printReportDoc() {
+function printReportDoc(customTitle = '') {
   const bookings    = getReportBookings();
   const type        = document.getElementById('reportPeriodType')?.value || 'monthly';
   const periodLabel = getPeriodLabel(type);
-  const reportHtml    = buildReportHTML(bookings, periodLabel);
-  printDoc(reportHtml, true);
+  const title       = customTitle || `รายงานสรุปการใช้สถานที่_${periodLabel.replace(/[/\\:\*\?"<>\|\s]/g, '_')}`;
+  const reportHtml  = buildReportHTML(bookings, periodLabel);
+  printDoc(reportHtml, true, title);
 }
 
 function getPeriodLabel(type) {
@@ -2961,24 +2910,30 @@ function openPrintPreview(b) {
   printDoc(html, false);
 }
 
-function printDoc(html, isReport = false) {
-  const w = window.open('', '_blank', 'width=900,height=700');
-  const title = isReport ? 'รายงานสรุปการใช้สถานที่' : 'พิมพ์ใบจองสถานที่';
+function printDoc(html, isReport = false, docTitle = '') {
+  const w = window.open('', '_blank', 'width=950,height=800');
+  if (!w) {
+    alert('กรุณาอนุญาตให้เปิดหน้าต่างป๊อปอัป (Pop-up) ในเบราว์เซอร์ เพื่อพิมพ์หรือบันทึกรายงานเป็น PDF');
+    return;
+  }
+  const defaultTitle = isReport ? 'รายงานสรุปการใช้สถานที่' : 'พิมพ์ใบจองสถานที่';
+  const title = docTitle || defaultTitle;
   w.document.write(`<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body {
-      font-family: 'Sarabun', sans-serif;
+      font-family: 'Sarabun', 'Noto Sans Thai', sans-serif;
       margin: 0;
       padding: 0;
       color: #0f172a;
+      background: #f1f5f9;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -2993,6 +2948,101 @@ function printDoc(html, isReport = false) {
       line-height: 0 !important;
       margin: 0 !important;
       padding: 0 !important;
+    }
+
+    /* Screen Action Bar (ซ่อนเมื่อสั่งพิมพ์หรือบันทึกเป็น PDF) */
+    .print-screen-bar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #0f2444;
+      color: #ffffff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      z-index: 9999;
+      font-family: 'Sarabun', sans-serif;
+    }
+    .print-screen-bar .bar-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .print-screen-bar .bar-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .print-screen-bar .bar-hint {
+      font-size: 0.82rem;
+      color: #fdba74;
+      background: rgba(255,255,255,0.08);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px dashed rgba(253,186,116,0.4);
+    }
+    .print-screen-bar .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .btn-action-print {
+      background: #ea580c;
+      color: #ffffff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 2px 6px rgba(234,88,12,0.4);
+      transition: background 0.15s;
+    }
+    .btn-action-print:hover {
+      background: #c2410c;
+    }
+    .btn-action-close {
+      background: rgba(255,255,255,0.12);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.25);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-action-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .doc-page-wrap {
+      max-width: 820px;
+      margin: 18px auto 40px;
+      background: #ffffff;
+      padding: 24px 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border-radius: 8px;
+    }
+
+    @media print {
+      .print-screen-bar {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+      }
+      .doc-page-wrap {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
     }
 
     /* === REPORT SUMMARY STYLES === */
@@ -3194,11 +3244,25 @@ function printDoc(html, isReport = false) {
     }
   </style>
 </head>
-<body>${html}</body>
+<body>
+  <div class="print-screen-bar">
+    <div class="bar-info">
+      <span class="bar-title">📄 ${escapeHtml(title)}</span>
+      <span class="bar-hint">💡 เคล็ดลับบันทึกเป็น PDF: ที่ช่อง "ปลายทาง" (Destination) ให้เลือก <strong>"บันทึกเป็น PDF" (Save as PDF)</strong></span>
+    </div>
+    <div class="btn-group">
+      <button type="button" class="btn-action-print" onclick="window.print()">🖨️ บันทึกเป็น PDF / สั่งพิมพ์</button>
+      <button type="button" class="btn-action-close" onclick="window.close()">✕ ปิด</button>
+    </div>
+  </div>
+  <div class="doc-page-wrap">
+    ${html}
+  </div>
+</body>
 </html>`);
   w.document.close();
   w.focus();
-  setTimeout(() => w.print(), 600);
+  setTimeout(() => w.print(), 700);
 }
 
 // ============================================================
