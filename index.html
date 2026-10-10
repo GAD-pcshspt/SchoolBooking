@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261010_7" />
+  <link rel="stylesheet" href="style.css?v=20261010_10" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
@@ -275,6 +275,24 @@
 
       <!-- Calendar List View (Alternative Mode) -->
       <div class="calendar-list-view hidden" id="calendarListView">
+        <!-- Date Selector Toolbar for List View -->
+        <div class="cal-list-filter-bar" id="calListFilterBar">
+          <div class="cal-list-filter-main">
+            <label for="calListDateInput" class="cal-list-filter-label" title="คลิกเพื่อเลือกวันที่ต้องการเจาะจง">
+              <span class="cal-list-filter-icon">🔍</span>
+              <span>เลือกเจาะจงวันที่:</span>
+            </label>
+            <div class="cal-list-input-wrap">
+              <input type="date" id="calListDateInput" class="cal-list-date-input" onchange="handleCalListDateChange(this.value)" />
+              <button type="button" class="btn-cal-list-clear hidden" id="btnCalListClearDate" onclick="clearCalListDate()" title="ล้างวันที่ที่เลือก เพื่อแสดงรายการทั้งเดือน">✕ แสดงทั้งเดือน</button>
+            </div>
+            <button type="button" class="btn-cal-list-today" onclick="setCalListDateToday()" title="เลือกดูรายการจองเฉพาะวันนี้">📌 วันนี้</button>
+          </div>
+          <div class="cal-list-filter-status" id="calListFilterStatus">
+            <!-- Dynamic info rendered by app.js -->
+          </div>
+        </div>
+
         <div class="calendar-list-container" id="calendarListContainer">
           <!-- List items rendered by app.js -->
         </div>
@@ -913,6 +931,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20261010_9"></script>
-  <script src="app.js?v=20261010_9"></script>
+  <script src="app.js?v=20261010_10"></script>
 </body>
 </html>

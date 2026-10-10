@@ -782,6 +782,7 @@ let state = {
   calYear:         new Date().getFullYear(),
   calMonth:        new Date().getMonth(),
   calViewMode:     'scroll',
+  calListSelectedDate: '',
   optSubTab:       'rooms',
   adminTab:        'approved',
   adminSection:    'manage',
@@ -2095,11 +2096,68 @@ function renderCalendarGrid() {
   grid.appendChild(daysGrid);
 }
 
+function handleCalListDateChange(val) {
+  if (!val) {
+    clearCalListDate();
+    return;
+  }
+  state.calListSelectedDate = val;
+  // If date falls outside current month/year, sync calYear and calMonth
+  const parts = val.split('-');
+  if (parts.length >= 2) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    if (!isNaN(y) && !isNaN(m)) {
+      state.calYear = y;
+      state.calMonth = m;
+      const monthDisplay = document.getElementById('calMonthDisplay');
+      if (monthDisplay) {
+        monthDisplay.textContent = `${THAI_MONTHS[state.calMonth]} ${state.calYear + 543}`;
+      }
+    }
+  }
+  renderCalendarList();
+}
+
+function clearCalListDate() {
+  state.calListSelectedDate = '';
+  const dateInput = document.getElementById('calListDateInput');
+  if (dateInput) dateInput.value = '';
+  const btnClear = document.getElementById('btnCalListClearDate');
+  if (btnClear) btnClear.classList.add('hidden');
+  renderCalendarList();
+}
+
+function setCalListDateToday() {
+  const todayStr = toDateStr(new Date());
+  handleCalListDateChange(todayStr);
+}
+
+function showBookingFormForDate(dateStr) {
+  showPage('booking');
+  const dInput = document.getElementById('bookingDate');
+  if (dInput && dateStr) {
+    dInput.value = dateStr;
+  }
+}
+
 function renderCalendarList() {
-  const { calYear, calMonth } = state;
+  const { calYear, calMonth, calListSelectedDate } = state;
   const filterRoom = document.getElementById('filterRoom')?.value || '';
-  const container = document.getElementById('calendarListView');
+  const container = document.getElementById('calendarListContainer') || document.getElementById('calendarListView');
   if (!container) return;
+
+  // Sync date input and clear button state
+  const dateInput = document.getElementById('calListDateInput');
+  const btnClear = document.getElementById('btnCalListClearDate');
+  const statusEl = document.getElementById('calListFilterStatus');
+
+  if (dateInput && dateInput.value !== (calListSelectedDate || '')) {
+    dateInput.value = calListSelectedDate || '';
+  }
+  if (btnClear) {
+    btnClear.classList.toggle('hidden', !calListSelectedDate);
+  }
 
   const allBookings = getBookings().filter(b => {
     if (!filterRoom) return true;
@@ -2111,6 +2169,65 @@ function renderCalendarList() {
     return false;
   });
 
+  // If user selected a specific date
+  if (calListSelectedDate) {
+    const dayBookings = allBookings.filter(b => b.bookingDate === calListSelectedDate);
+
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <div>📅 แสดงเฉพาะวันที่ <strong>${formatDateThai(calListSelectedDate)}</strong></div>
+        <span class="cal-list-status-badge">${dayBookings.length} รายการ</span>
+      `;
+    }
+
+    if (dayBookings.length === 0) {
+      container.innerHTML = `
+        <div class="cal-list-empty">
+          <div class="empty-icon" style="font-size:2.8rem;margin-bottom:8px;">📅</div>
+          <h4 style="font-size:1.05rem;color:var(--navy-800);margin-bottom:6px;font-weight:700;">ไม่มีรายการจองในวันที่ ${formatDateThai(calListSelectedDate)}</h4>
+          <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:14px;">ในวันที่ระบุยังไม่มีการจองสถานที่ คุณสามารถเลือกดูวันอื่น หรือดูทั้งเดือนได้</p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="clearCalListDate()">✕ แสดงทั้งเดือน</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="showBookingFormForDate('${calListSelectedDate}')">➕ จองสถานที่ในวันนี้</button>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const d = new Date(calListSelectedDate);
+    const items = dayBookings.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const dow = isNaN(d.getTime()) ? '' : THAI_DAYS[d.getDay()];
+    const dateFormatted = formatDateThai(calListSelectedDate);
+
+    container.innerHTML = `
+      <div class="cal-list-day-group">
+        <div class="cal-list-day-header">
+          <div class="cal-list-day-title">
+            <span>📅</span>
+            <strong>${dow ? dow + 'ที่ ' : ''}${dateFormatted}</strong>
+          </div>
+          <span class="cal-list-day-count">${items.length} รายการ</span>
+        </div>
+        <div class="cal-list-day-items">
+          ${items.map(b => `
+            <div class="cal-list-card ${b.status}" onclick="viewBookingDetail(${b.id})">
+              <div class="cal-list-card-top">
+                <span class="cal-list-room">📍 ${escapeHtml(b.room)}</span>
+                <span class="status-badge ${b.status}">${statusLabel(b.status)}</span>
+              </div>
+              <div class="cal-list-card-meta">
+                <span class="cal-list-time">⏰ ${b.startTime}–${b.endTime} น.</span>
+                <span class="cal-list-user">👤 ${escapeHtml(b.fullName)} · ${escapeHtml(b.department || '-')}</span>
+              </div>
+              ${b.purpose ? `<div class="cal-list-purpose">🎯 ${escapeHtml(b.purpose)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   // Filter bookings belonging to this year and month
   const monthBookings = allBookings.filter(b => {
     if (!b.bookingDate) return false;
@@ -2121,12 +2238,20 @@ function renderCalendarList() {
     return y === calYear && m === calMonth;
   });
 
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <div>🗓️ แสดงรายการจองทั้งเดือน <strong>${THAI_MONTHS[calMonth]} ${calYear + 543}</strong></div>
+      <span class="cal-list-status-badge">${monthBookings.length} รายการ</span>
+    `;
+  }
+
   if (monthBookings.length === 0) {
     container.innerHTML = `
       <div class="cal-list-empty">
         <div class="empty-icon" style="font-size:2.8rem;margin-bottom:8px;">📅</div>
-        <h4 style="font-size:1.05rem;color:var(--navy-800);margin-bottom:4px;font-weight:700;">ไม่มีรายการจองในเดือนนี้</h4>
-        <p style="color:var(--gray-500);font-size:0.85rem;">คุณสามารถเลือกดูเดือนอื่น หรือกดจองสถานที่เพื่อเพิ่มรายการใหม่</p>
+        <h4 style="font-size:1.05rem;color:var(--navy-800);margin-bottom:6px;font-weight:700;">ไม่มีรายการจองในเดือนนี้</h4>
+        <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:14px;">คุณสามารถเลือกดูเดือนอื่น หรือกดจองสถานที่เพื่อเพิ่มรายการใหม่</p>
+        <button type="button" class="btn btn-primary btn-sm" onclick="showPage('booking')">➕ จองสถานที่ใหม่</button>
       </div>`;
     return;
   }
@@ -2259,11 +2384,13 @@ function createDayCell(date, bookings, today, otherMonth) {
 function prevMonth() {
   state.calMonth--;
   if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+  state.calListSelectedDate = '';
   renderCalendar();
 }
 function nextMonth() {
   state.calMonth++;
   if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+  state.calListSelectedDate = '';
   renderCalendar();
 }
 
@@ -4063,6 +4190,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.toggleCalScroll         = toggleCalScroll;
   window.viewBookingDetail       = viewBookingDetail;
   window.closeDayDetail          = closeDayDetail;
+  window.handleCalListDateChange = handleCalListDateChange;
+  window.clearCalListDate        = clearCalListDate;
+  window.setCalListDateToday     = setCalListDateToday;
+  window.showBookingFormForDate  = showBookingFormForDate;
 
   // Calendar horizontal scroll listener for toggle button text
   const calWrap = document.getElementById('calendarScrollWrap');
