@@ -2264,7 +2264,7 @@ function renderAdminTable() {
   }
 }
 
-function cancelBooking(id) {
+async function cancelBooking(id) {
   if (!confirm('ยืนยันการยกเลิกการจองนี้?')) return;
   const bookings = getBookings();
   const targetIdStr = String(id !== null && id !== undefined ? id : '').trim();
@@ -2274,13 +2274,16 @@ function cancelBooking(id) {
   bookings[idx].cancelledAt = new Date().toISOString();
   saveBookings(bookings);
 
-  if (checkIsGoogleSheetsConfigured()) {
-    sendGoogleSheetsAction('cancel', { id: targetIdStr });
-  }
-
-  showToast('ยกเลิกการจองแล้ว', 'warning');
+  showToast('กำลังส่งคำขอยกเลิกไปยังฐานข้อมูล...', 'info');
   renderAdmin();
   renderCalendar();
+
+  if (checkIsGoogleSheetsConfigured()) {
+    await sendGoogleSheetsAction('cancel', { id: targetIdStr });
+    await fetchGoogleSheetsBookings(true);
+  }
+
+  showToast('ยกเลิกการจองแล้ว ⚠️', 'warning');
 }
 
 // ============================================================
@@ -2375,7 +2378,7 @@ function editBooking(id) {
 }
 function closeEdit() { document.getElementById('editModal').classList.add('hidden'); state.editingId = null; }
 
-function saveEdit() {
+async function saveEdit() {
   const id = state.editingId;
   if (!id) return;
   const bookings = getBookings();
@@ -2420,14 +2423,17 @@ function saveEdit() {
   bookings[idx] = updated;
   saveBookings(bookings);
 
+  showToast('กำลังบันทึกการแก้ไขไปยังฐานข้อมูล...', 'info');
+  renderAdmin();
+  renderCalendar();
+
   if (checkIsGoogleSheetsConfigured()) {
-    sendGoogleSheetsAction('update', { booking: updated });
+    await sendGoogleSheetsAction('update', { booking: updated });
+    await fetchGoogleSheetsBookings(true);
   }
 
   closeEdit();
   showToast('แก้ไขการจองสำเร็จ ✅', 'success');
-  renderAdmin();
-  renderCalendar();
 }
 
 // ============================================================
@@ -3490,13 +3496,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Report period type change listener
   document.getElementById('reportPeriodType')?.addEventListener('change', handleReportPeriodChange);
 
-  // Load bookings from Google Sheets if configured
+  // Load bookings from Cloud on start
   fetchGoogleSheetsBookings();
 
-  // Background auto-sync every 30 seconds
+  // Instant re-sync เมื่อสลับแท็บหรือคลิกกลับมาที่หน้าต่างเบราว์เซอร์
+  window.addEventListener('focus', () => fetchGoogleSheetsBookings(true));
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) fetchGoogleSheetsBookings(true);
+  });
+
+  // Background auto-sync ทุก 8 วินาที (รองรับกรณี WebSocket ติดไฟร์วอลล์โรงเรียน)
   setInterval(() => {
     fetchGoogleSheetsBookings(true);
-  }, 30000);
+  }, 8000);
 
   showPage('booking');
 });
