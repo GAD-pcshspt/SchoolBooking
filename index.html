@@ -443,6 +443,30 @@
 
         <div class="report-summary-cards" id="reportSummaryCards"></div>
 
+        <!-- Section: Report Chart (Horizontal Bar Chart) -->
+        <div class="report-chart-section">
+          <div class="report-chart-header">
+            <div>
+              <h3 class="report-chart-title">📊 แผนภูมิเปรียบเทียบสถิติการใช้สถานที่</h3>
+              <p class="report-chart-desc">เปรียบเทียบความถี่และปริมาณการใช้งานระหว่างแต่ละสถานที่ตามช่วงเวลาที่เลือก</p>
+            </div>
+            <div class="chart-metric-toggle">
+              <button type="button" class="chart-toggle-btn active" id="btnMetricCount" onclick="switchReportChartMetric('count')">
+                🔢 ตามจำนวนครั้งที่จอง
+              </button>
+              <button type="button" class="chart-toggle-btn" id="btnMetricHours" onclick="switchReportChartMetric('hours')">
+                ⏱️ ตามชั่วโมงการใช้งาน
+              </button>
+            </div>
+          </div>
+          <div class="report-chart-card">
+            <div class="chart-canvas-container" id="reportChartContainer">
+              <canvas id="reportVenueChart"></canvas>
+            </div>
+            <div class="top-venues-row" id="topVenuesSummaryRow"></div>
+          </div>
+        </div>
+
         <div class="report-section">
           <h3 class="report-section-title">รายละเอียดการจองทั้งหมด</h3>
           <div class="report-table-hint">📱 เลื่อนตารางซ้าย-ขวา เพื่อดูข้อมูลทั้งหมด</div>
@@ -885,9 +909,10 @@
   <!-- Toast Notification -->
   <div class="toast hidden" id="toast"><span id="toastMsg"></span></div>
 
-  <!-- Supabase Client & App Scripts -->
+  <!-- Chart.js, Supabase Client & App Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20261010_8"></script>
-  <script src="app.js?v=20261010_8"></script>
+  <script src="supabase-config.js?v=20261010_9"></script>
+  <script src="app.js?v=20261010_9"></script>
 </body>
 </html>

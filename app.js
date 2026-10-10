@@ -2754,6 +2754,241 @@ function getReportBookings() {
   return [];
 }
 
+let reportChartMetric = 'count';
+let reportChartInstance = null;
+
+function switchReportChartMetric(metric) {
+  reportChartMetric = metric;
+  document.getElementById('btnMetricCount')?.classList.toggle('active', metric === 'count');
+  document.getElementById('btnMetricHours')?.classList.toggle('active', metric === 'hours');
+  renderReportVenueChart(getReportBookings());
+}
+
+function renderReportVenueChart(bookings) {
+  const allRooms = [...new Set(bookings.flatMap(b => {
+    const list = getRoomsList(b);
+    return list.length > 0 ? list : [b.room];
+  }))];
+
+  const venueStats = allRooms.map(r => {
+    const rb = bookings.filter(b => {
+      const list = getRoomsList(b);
+      return list.includes(r) || b.room === r;
+    });
+    const approvedList = rb.filter(b => b.status === 'approved');
+    const hours = approvedList.reduce((s, b) => s + timeDiffHours(b.startTime, b.endTime), 0);
+    const count = rb.length;
+    const cancelled = rb.filter(b => b.status === 'cancelled').length;
+    return { name: r, count, hours, cancelled };
+  });
+
+  // เรียงลำดับจากมากไปน้อยตาม Metric ที่เลือก
+  if (reportChartMetric === 'hours') {
+    venueStats.sort((a, b) => b.hours - a.hours || b.count - a.count);
+  } else {
+    venueStats.sort((a, b) => b.count - a.count || b.hours - a.hours);
+  }
+
+  // 1. Render Top 3 Summary Badges
+  const topRowEl = document.getElementById('topVenuesSummaryRow');
+  if (topRowEl) {
+    if (venueStats.length === 0) {
+      topRowEl.innerHTML = '<div style="color:var(--gray-500);font-size:0.85rem;padding:6px;">ไม่มีข้อมูลการจองสถานที่ในช่วงเวลานี้</div>';
+    } else {
+      const rankIcons = ['🥇', '🥈', '🥉'];
+      const rankClasses = ['rank-1', 'rank-2', 'rank-3'];
+      const top3 = venueStats.slice(0, 3);
+      topRowEl.innerHTML = top3.map((v, idx) => `
+        <div class="top-venue-badge ${rankClasses[idx] || ''}">
+          <span class="rank-icon">${rankIcons[idx] || (idx + 1)}</span>
+          <div class="top-venue-info">
+            <div class="top-venue-name" title="${escapeHtml(v.name)}">${escapeHtml(v.name)}</div>
+            <div class="top-venue-stat">จอง ${v.count} ครั้ง • ${v.hours.toFixed(1)} ชม.</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 2. Render Chart (Chart.js or SVG fallback)
+  const canvas = document.getElementById('reportVenueChart');
+  const container = document.getElementById('reportChartContainer');
+  if (!canvas || !container) return;
+
+  if (venueStats.length === 0) {
+    if (reportChartInstance) {
+      reportChartInstance.destroy();
+      reportChartInstance = null;
+    }
+    canvas.style.display = 'none';
+    let emptyEl = document.getElementById('reportChartEmptyMsg');
+    if (!emptyEl) {
+      emptyEl = document.createElement('div');
+      emptyEl.id = 'reportChartEmptyMsg';
+      emptyEl.style.cssText = 'text-align:center;padding:40px 10px;color:var(--gray-400);font-size:0.9rem;';
+      emptyEl.textContent = 'ไม่มีข้อมูลสถิติสถานที่สำหรับสร้างแผนภูมิ';
+      container.appendChild(emptyEl);
+    }
+    return;
+  }
+
+  const emptyEl = document.getElementById('reportChartEmptyMsg');
+  if (emptyEl) emptyEl.remove();
+  canvas.style.display = 'block';
+
+  const dynamicHeight = Math.max(280, venueStats.length * 36 + 50);
+  container.style.height = `${dynamicHeight}px`;
+
+  const labels = venueStats.map(v => v.name);
+  const dataValues = venueStats.map(v => reportChartMetric === 'hours' ? Number(v.hours.toFixed(1)) : v.count);
+  const metricLabel = reportChartMetric === 'hours' ? 'ชั่วโมงการใช้งาน (ชม.)' : 'จำนวนครั้งที่จอง (ครั้ง)';
+  const barColors = reportChartMetric === 'hours'
+    ? venueStats.map((_, i) => i === 0 ? '#1d4ed8' : (i < 3 ? '#2563eb' : '#60a5fa'))
+    : venueStats.map((_, i) => i === 0 ? '#ea580c' : (i < 3 ? '#f97316' : '#fb923c'));
+
+  if (typeof Chart !== 'undefined') {
+    if (reportChartInstance) {
+      reportChartInstance.destroy();
+    }
+    const ctx = canvas.getContext('2d');
+    reportChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: metricLabel,
+          data: dataValues,
+          backgroundColor: barColors,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 24,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 400 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f2444',
+            titleFont: { family: "'Sarabun', sans-serif", size: 13, weight: 'bold' },
+            bodyFont: { family: "'Sarabun', sans-serif", size: 12 },
+            padding: 10,
+            cornerRadius: 8,
+            callbacks: {
+              afterLabel: function(context) {
+                const item = venueStats[context.dataIndex];
+                if (reportChartMetric === 'count') {
+                  return `ชั่วโมงรวม: ${item.hours.toFixed(1)} ชม. | ยกเลิก: ${item.cancelled}`;
+                } else {
+                  return `จำนวนครั้ง: ${item.count} ครั้ง | ยกเลิก: ${item.cancelled}`;
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: { color: '#f1f5f9' },
+            ticks: {
+              font: { family: "'Sarabun', sans-serif", size: 11 },
+              color: '#64748b',
+              precision: reportChartMetric === 'hours' ? 1 : 0
+            }
+          },
+          y: {
+            grid: { display: false },
+            ticks: {
+              font: { family: "'Sarabun', sans-serif", size: 12, weight: '600' },
+              color: '#1e293b'
+            }
+          }
+        }
+      }
+    });
+  } else {
+    canvas.style.display = 'none';
+    let fallback = document.getElementById('reportChartSvgFallback');
+    if (!fallback) {
+      fallback = document.createElement('div');
+      fallback.id = 'reportChartSvgFallback';
+      container.appendChild(fallback);
+    }
+    fallback.innerHTML = buildReportChartSVG(venueStats);
+  }
+}
+
+function buildReportChartSVG(venueStats) {
+  if (!venueStats || venueStats.length === 0) {
+    return `<div style="text-align:center;padding:30px;color:#64748b;font-size:10pt;border:1px dashed #cbd5e1;border-radius:8px;">ไม่มีข้อมูลสถิติสถานที่สำหรับสร้างแผนภูมิ</div>`;
+  }
+
+  const maxCount = Math.max(...venueStats.map(v => v.count), 1);
+  const rowHeight = 30;
+  const topPadding = 28;
+  const bottomPadding = 32;
+  const svgWidth = 740;
+  const labelWidth = 200;
+  const chartWidth = 410;
+  const svgHeight = topPadding + (venueStats.length * rowHeight) + bottomPadding;
+
+  const gridSteps = [0, 0.25, 0.5, 0.75, 1];
+  const gridLines = gridSteps.map(ratio => {
+    const val = Math.round(maxCount * ratio);
+    const x = labelWidth + (ratio * chartWidth);
+    return `
+      <line x1="${x}" y1="${topPadding - 4}" x2="${x}" y2="${svgHeight - bottomPadding + 4}" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3,3" />
+      <text x="${x}" y="${svgHeight - bottomPadding + 18}" font-size="9" fill="#64748b" text-anchor="middle" font-family="'Sarabun', sans-serif">${val}</text>
+    `;
+  }).join('');
+
+  const rankBadges = ['🥇', '🥈', '🥉'];
+
+  const rows = venueStats.map((v, i) => {
+    const y = topPadding + (i * rowHeight);
+    const barW = Math.max(8, (v.count / maxCount) * chartWidth);
+    const isTop3 = i < 3;
+    const barFill = i === 0 ? 'url(#barGrad1)' : (i < 3 ? 'url(#barGrad2)' : 'url(#barGrad3)');
+    const rankTxt = rankBadges[i] ? `${rankBadges[i]} ` : `${i + 1}. `;
+
+    return `
+      <text x="${labelWidth - 8}" y="${y + 15}" font-size="9.5" fill="#1e293b" text-anchor="end" font-weight="${isTop3 ? '700' : '500'}" font-family="'Sarabun', sans-serif">
+        ${rankTxt}${escapeHtml(v.name)}
+      </text>
+      <rect x="${labelWidth}" y="${y + 2}" width="${chartWidth}" height="18" rx="4" fill="#f8fafc" stroke="#f1f5f9" stroke-width="1" />
+      <rect x="${labelWidth}" y="${y + 2}" width="${barW}" height="18" rx="4" fill="${barFill}" />
+      <text x="${labelWidth + barW + 8}" y="${y + 15}" font-size="9" font-weight="700" fill="#0f2444" font-family="'Sarabun', sans-serif">
+        ${v.count} ครั้ง (${v.hours.toFixed(1)} ชม.)
+      </text>
+    `;
+  }).join('');
+
+  return `
+    <svg width="100%" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" xmlns="http://www.w3.org/2000/svg" style="display:block;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:6px 0;box-sizing:border-box;">
+      <defs>
+        <linearGradient id="barGrad1" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#ea580c"/>
+          <stop offset="100%" stop-color="#f97316"/>
+        </linearGradient>
+        <linearGradient id="barGrad2" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0284c7"/>
+          <stop offset="100%" stop-color="#38bdf8"/>
+        </linearGradient>
+        <linearGradient id="barGrad3" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#64748b"/>
+          <stop offset="100%" stop-color="#94a3b8"/>
+        </linearGradient>
+      </defs>
+      <text x="${labelWidth}" y="${topPadding - 10}" font-size="8.8" fill="#64748b" font-weight="600" font-family="'Sarabun', sans-serif">แกนนอน: จำนวนครั้งที่จอง (ครั้ง)</text>
+      ${gridLines}
+      ${rows}
+    </svg>
+  `;
+}
+
 function renderAdminReport() {
   const bookings  = getReportBookings();
   const approved  = bookings.filter(b => b.status === 'approved');
@@ -2770,7 +3005,10 @@ function renderAdminReport() {
     `;
   }
 
-  // Room summary
+  // Render Horizontal Bar Chart & Top Venues
+  renderReportVenueChart(bookings);
+
+  // Room summary table
   const allRooms = [...new Set(bookings.flatMap(b => {
     const list = getRoomsList(b);
     return list.length > 0 ? list : [b.room];
@@ -2858,13 +3096,13 @@ function buildReportHTML(bookings, periodLabel) {
   const allRooms = [...new Set(bookings.flatMap(b => {
     const list = getRoomsList(b);
     return list.length > 0 ? list : [b.room];
-  }))].sort();
+  }))];
 
   let totalVenueBookings = 0;
   let totalVenueHours = 0;
   let totalVenueCancelled = 0;
 
-  const roomSummaryRows = allRooms.map(r => {
+  const venueStatsList = allRooms.map(r => {
     const rb = bookings.filter(b => {
       const list = getRoomsList(b);
       return list.includes(r) || b.room === r;
@@ -2876,13 +3114,15 @@ function buildReportHTML(bookings, periodLabel) {
     totalVenueHours += rh;
     totalVenueCancelled += rc;
 
-    return `<tr>
-      <td style="text-align:left;border:1px solid #cbd5e1;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(r)}</td>
-      <td style="text-align:center;font-weight:700;border:1px solid #cbd5e1;padding:6px 4px;white-space:nowrap;">${rb.length}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:6px 4px;white-space:nowrap;">${rh.toFixed(1)} ชม.</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:6px 4px;white-space:nowrap;color:${rc > 0 ? '#b91c1c' : '#475569'};">${rc}</td>
-    </tr>`;
-  }).join('');
+    return { name: r, count: rb.length, hours: rh, cancelled: rc };
+  });
+
+  const roomSummaryRows = venueStatsList.sort((a, b) => a.name.localeCompare(b.name)).map(v => `<tr>
+    <td style="text-align:left;border:1px solid #cbd5e1;padding:6px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(v.name)}</td>
+    <td style="text-align:center;font-weight:700;border:1px solid #cbd5e1;padding:6px 4px;white-space:nowrap;">${v.count}</td>
+    <td style="text-align:center;border:1px solid #cbd5e1;padding:6px 4px;white-space:nowrap;">${v.hours.toFixed(1)} ชม.</td>
+    <td style="text-align:center;border:1px solid #cbd5e1;padding:6px 4px;white-space:nowrap;color:${v.cancelled > 0 ? '#b91c1c' : '#475569'};">${v.cancelled}</td>
+  </tr>`).join('');
 
   const summaryFooterRow = allRooms.length ? `
     <tr style="background:#f1f5f9;font-weight:700;">
@@ -2892,6 +3132,21 @@ function buildReportHTML(bookings, periodLabel) {
       <td style="text-align:center;border:1px solid #cbd5e1;padding:6px 4px;color:#b91c1c;">${totalVenueCancelled}</td>
     </tr>
   ` : '';
+
+  // 3. จัดเรียงข้อมูลสำหรับแผนภูมิแท่งหน้าสุดท้าย (เรียงจากใช้งานมากที่สุดลงไปน้อยที่สุด)
+  const sortedVenueStats = [...venueStatsList].sort((a, b) => b.count - a.count || b.hours - a.hours);
+
+  const top3PdfHtml = sortedVenueStats.length > 0 ? sortedVenueStats.slice(0, 3).map((v, i) => {
+    const medals = ['🥇 อันดับ 1', '🥈 อันดับ 2', '🥉 อันดับ 3'];
+    const bgs = ['#fef3c7;border:1px solid #fde68a;color:#92400e;', '#f1f5f9;border:1px solid #cbd5e1;color:#1e293b;', '#fff7ed;border:1px solid #fed7aa;color:#9a3412;'];
+    return `
+      <div style="flex:1;background:${bgs[i]}border-radius:6px;padding:6px 10px;min-width:180px;box-sizing:border-box;">
+        <div style="font-size:8pt;font-weight:700;margin-bottom:2px;">${medals[i]}</div>
+        <div style="font-size:9pt;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(v.name)}</div>
+        <div style="font-size:7.5pt;margin-top:2px;">ใช้งาน ${v.count} ครั้ง (${v.hours.toFixed(1)} ชม.)</div>
+      </div>
+    `;
+  }).join('') : '<div style="font-size:8pt;color:#64748b;">ไม่มีข้อมูลการจอง</div>';
 
   return `
     <div style="font-family:'Sarabun','Noto Sans Thai',sans-serif;color:#0f172a;background:#ffffff;box-sizing:border-box;width:100%;max-width:760px;margin:0 auto;padding:2px 0;">
@@ -2937,10 +3192,10 @@ function buildReportHTML(bookings, periodLabel) {
         </table>
       </div>
 
-      <!-- ================= PAGE BREAK (แยกสรุปเป็นหน้าถัดไป ไม่รวมหน้าเดียวกัน) ================= -->
+      <!-- ================= PAGE BREAK (แยกหน้าที่ 2 : ตารางสรุป) ================= -->
       <div class="html2pdf__page-break" style="page-break-before:always;break-before:page;height:0;line-height:0;margin:0;padding:0;"></div>
 
-      <!-- ================= หน้าที่ 2 : ตารางสรุปการจองแยกตามสถานที่ (ตารางที่สอง) & ลายเซ็น ================= -->
+      <!-- ================= หน้าที่ 2 : ตารางสรุปการจองแยกตามสถานที่ ================= -->
       <div style="padding-top:6px;">
         <div style="text-align:center;border-bottom:2px solid #0f2444;padding-bottom:6px;margin-bottom:12px;">
           <h2 style="font-size:12.5pt;font-weight:800;color:#0f2444;margin:0 0 2px;">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</h2>
@@ -2966,9 +3221,38 @@ function buildReportHTML(bookings, periodLabel) {
             ${summaryFooterRow}
           </tbody>
         </table>
+      </div>
+
+      <!-- ================= PAGE BREAK (แยกหน้าที่ 3 : แผนภูมิแท่งและส่วนลงนามหน้าสุดท้าย) ================= -->
+      <div class="html2pdf__page-break" style="page-break-before:always;break-before:page;height:0;line-height:0;margin:0;padding:0;"></div>
+
+      <!-- ================= หน้าที่ 3 (หน้าสุดท้าย) : แผนภูมิแท่งเปรียบเทียบสถานที่, สรุปอันดับ และลายเซ็น ================= -->
+      <div style="padding-top:6px;">
+        <div style="text-align:center;border-bottom:2px solid #0f2444;padding-bottom:6px;margin-bottom:12px;">
+          <h2 style="font-size:12.5pt;font-weight:800;color:#0f2444;margin:0 0 2px;">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</h2>
+          <p style="font-size:8.8pt;color:#475569;margin:0 0 3px;">แผนภูมิเปรียบเทียบสถิติการใช้สถานที่ (${periodLabel})</p>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 6px;border-bottom:1.5px solid #fdba74;padding-bottom:3px;">
+          <span style="font-size:9.2pt;font-weight:700;color:#0f2444;">แผนภูมิที่ 1: เปรียบเทียบสถิติการใช้งานแต่ละสถานที่</span>
+          <span style="font-size:7.5pt;color:#64748b;">เปรียบเทียบตามจำนวนครั้งที่จองและชั่วโมงรวม</span>
+        </div>
+
+        <!-- High-Resolution Vector Chart -->
+        <div style="margin-bottom:16px;">
+          ${buildReportChartSVG(sortedVenueStats)}
+        </div>
+
+        <!-- Top 3 Highlights -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:8.8pt;font-weight:700;color:#0f2444;margin-bottom:6px;">🏆 สรุปอันดับสถานที่ที่มีการใช้งานสูงสุด</div>
+          <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+            ${top3PdfHtml}
+          </div>
+        </div>
 
         <!-- Signature Section -->
-        <div style="display:flex;justify-content:space-between;margin-top:40px;padding:0 24px;page-break-inside:avoid;">
+        <div style="display:flex;justify-content:space-between;margin-top:35px;padding:0 24px;page-break-inside:avoid;">
           <div style="text-align:center;width:230px;font-size:8.2pt;">
             <div style="border-bottom:1px dotted #475569;height:28px;margin-bottom:8px;"></div>
             <p style="margin:2px 0;">( ............................................................ )</p>
@@ -3750,6 +4034,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.toggleOtherPosition     = toggleOtherPosition;
   window.toggleEditOtherPosition = toggleEditOtherPosition;
   window.exportReportPDF         = exportReportPDF;
+  window.switchReportChartMetric = switchReportChartMetric;
   window.switchOptSubTab         = switchOptSubTab;
   window.addNewPosition          = addNewPosition;
   window.deletePosition          = deletePosition;
