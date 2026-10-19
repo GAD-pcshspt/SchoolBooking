@@ -120,7 +120,10 @@ const DEFAULT_FORM_OPTIONS = {
     'ม.6 ทุกห้อง',
     'คณะครูและบุคลากร',
     'นักเรียนกลุ่มกิจกรรม'
-  ]
+  ],
+  // การปิดสถานที่: { [ชื่อห้อง]: { mode: 'manual' | 'range', start, end, reason } }
+  // ห้องเรียนใช้ชื่อแบบเดียวกับข้อมูลการจอง เช่น "ห้อง 101"
+  roomClosures: {}
 };
 
 function getFormOptions() {
@@ -136,6 +139,7 @@ function getFormOptions() {
       venueCategories: hasValidCategories ? parsed.venueCategories : DEFAULT_FORM_OPTIONS.venueCategories,
       roomLayouts: Array.isArray(parsed.roomLayouts) ? parsed.roomLayouts : DEFAULT_FORM_OPTIONS.roomLayouts,
       userGroups: Array.isArray(parsed.userGroups) ? parsed.userGroups : DEFAULT_FORM_OPTIONS.userGroups,
+      roomClosures: (parsed.roomClosures && typeof parsed.roomClosures === 'object' && !Array.isArray(parsed.roomClosures)) ? parsed.roomClosures : {},
       _updatedAt: Number(parsed._updatedAt) || 0,
     };
   } catch {
@@ -223,6 +227,216 @@ async function syncFormOptionsToCloud(opts) {
   }
 }
 
+// ------------------------------------------------------------
+// ROOM CLOSURES (ปิดสถานที่ไม่ให้จอง)
+// ------------------------------------------------------------
+
+// คืนค่าการปิดของห้องนี้ถ้ายังมีผลอยู่ (ปิดทันที หรือช่วงวันที่ที่ยังไม่สิ้นสุด) ไม่งั้นคืน null
+function getActiveRoomClosure(roomKey, options) {
+  const c = (options || getFormOptions()).roomClosures[roomKey];
+  if (!c) return null;
+  if (c.mode === 'manual') return c;
+  if (c.mode === 'range' && c.start && c.end && c.end >= toDateStr(new Date())) return c;
+  return null;
+}
+
+// ห้องนี้ปิดให้จองในวันที่ dateStr หรือไม่ (ปิดแบบช่วงวันที่จะมีผลเฉพาะวันที่อยู่ในช่วง)
+function isRoomClosedOn(roomKey, dateStr, options) {
+  const c = getActiveRoomClosure(roomKey, options);
+  if (!c) return false;
+  if (c.mode === 'manual') return true;
+  return Boolean(dateStr) && dateStr >= c.start && dateStr <= c.end;
+}
+
+function closurePeriodText(c) {
+  if (c.mode === 'manual') return 'จนกว่าจะเปิดอีกครั้ง';
+  return c.start === c.end
+    ? formatDateThai(c.start)
+    : `${formatDateThai(c.start)} – ${formatDateThai(c.end)}`;
+}
+
+function closureReasonText(c) {
+  return c.reason || 'ปิดชั่วคราว';
+}
+
+// ชื่อที่แสดงใน dropdown หน้าจอง พร้อมบอกว่าใช้ได้หรือไม่ในวันที่เลือก
+function roomOptionLabel(roomKey, dateStr, options) {
+  const c = getActiveRoomClosure(roomKey, options);
+  if (!c) return { label: roomKey, disabled: false };
+  if (isRoomClosedOn(roomKey, dateStr, options)) {
+    return { label: `${roomKey} — 🔒 ปิดให้จอง (${closureReasonText(c)})`, disabled: true };
+  }
+  return { label: `${roomKey} (ปิด ${closurePeriodText(c)})`, disabled: false };
+}
+
+function getBookingDateValue() {
+  const el = document.getElementById('bookingDate');
+  return el ? el.value : '';
+}
+
+// เตือนใต้ช่องห้อง ถ้าห้องที่เลือกไว้ปิดในวันที่เลือก
+function validateSelectedRoomsOpen() {
+  const errEl = document.getElementById('errRoom');
+  const roomEl = document.getElementById('room');
+  const dateStr = getBookingDateValue();
+  const options = getFormOptions();
+  const closed = getFinalRoomSelection().rooms.filter(r => isRoomClosedOn(r, dateStr, options));
+  if (closed.length === 0) {
+    if (roomEl) roomEl.classList.remove('error');
+    if (errEl && errEl.dataset.closure) { errEl.textContent = ''; delete errEl.dataset.closure; }
+    return true;
+  }
+  const c = getActiveRoomClosure(closed[0], options);
+  if (errEl) {
+    errEl.textContent = `⚠️ ${closed.join(', ')} ปิดให้จองในวันที่เลือก (${closureReasonText(c)}: ${closurePeriodText(c)}) กรุณาเลือกห้องหรือวันอื่น`;
+    errEl.dataset.closure = '1';
+  }
+  if (roomEl) roomEl.classList.add('error');
+  return false;
+}
+
+function handleBookingDateChange() {
+  refreshAllFormOptions();
+  validateSelectedRoomsOpen();
+}
+
+// ------------------------------------------------------------
+// ADMIN: Room Closure Modal
+// ------------------------------------------------------------
+let closureEditingRoomKey = null;
+
+function openRoomClosureModal(catIdx, roomIdx) {
+  const cat = getFormOptions().venueCategories[catIdx];
+  if (!cat || !cat.rooms || cat.rooms[roomIdx] === undefined) return;
+  showRoomClosureModal(cat.rooms[roomIdx]);
+}
+
+function openClassroomClosureModal(gradeKey, roomIdx) {
+  const crCat = getFormOptions().venueCategories.find(c => c.type === 'classroom_grades');
+  const g = crCat && crCat.grades && crCat.grades[gradeKey];
+  if (!g || !g.rooms || g.rooms[roomIdx] === undefined) return;
+  showRoomClosureModal(`ห้อง ${g.rooms[roomIdx]}`);
+}
+
+function showRoomClosureModal(roomKey) {
+  closureEditingRoomKey = roomKey;
+  const c = getFormOptions().roomClosures[roomKey];
+  const today = toDateStr(new Date());
+
+  document.getElementById('closureRoomName').textContent = roomKey;
+  document.querySelectorAll('input[name="closureMode"]').forEach(el => {
+    el.checked = el.value === (c ? c.mode : 'manual');
+  });
+  document.getElementById('closureStart').value = (c && c.start) || today;
+  document.getElementById('closureEnd').value = (c && c.end) || today;
+  document.getElementById('closureReason').value = (c && c.reason) || '';
+  document.getElementById('errClosure').textContent = '';
+  document.getElementById('btnReopenRoom').classList.toggle('hidden', !c);
+  document.getElementById('roomClosureModalTitle').textContent = c ? '🔒 แก้ไขการปิดสถานที่' : '🔒 ปิดการจองสถานที่';
+
+  onClosureModeChange();
+  document.getElementById('roomClosureModal').classList.remove('hidden');
+}
+
+function closeRoomClosureModal() {
+  document.getElementById('roomClosureModal').classList.add('hidden');
+  closureEditingRoomKey = null;
+}
+
+function getClosureModeValue() {
+  const el = document.querySelector('input[name="closureMode"]:checked');
+  return el ? el.value : 'manual';
+}
+
+function onClosureModeChange() {
+  const mode = getClosureModeValue();
+  document.getElementById('closureRangeFields').classList.toggle('hidden', mode !== 'range');
+  updateClosureBookingWarning();
+}
+
+// แจ้งจำนวนการจองที่มีอยู่แล้วในช่วงที่จะปิด (ไม่ลบให้ แอดมินจัดการเอง)
+function updateClosureBookingWarning() {
+  const warnEl = document.getElementById('closureBookingWarn');
+  if (!warnEl || !closureEditingRoomKey) return;
+  const mode = getClosureModeValue();
+  const today = toDateStr(new Date());
+  const start = mode === 'range' ? document.getElementById('closureStart').value : today;
+  const end = mode === 'range' ? document.getElementById('closureEnd').value : '';
+
+  const affected = getBookings().filter(b =>
+    b.status === 'approved' &&
+    b.bookingDate >= start &&
+    (!end || b.bookingDate <= end) &&
+    getRoomsList(b).includes(closureEditingRoomKey)
+  );
+
+  if (affected.length === 0) {
+    warnEl.classList.add('hidden');
+    warnEl.innerHTML = '';
+    return;
+  }
+  const dates = [...new Set(affected.map(b => b.bookingDate))].sort().slice(0, 5).map(formatDateThai);
+  warnEl.innerHTML = `⚠️ มีการจองห้องนี้อยู่แล้ว <strong>${affected.length} รายการ</strong> ในช่วงที่จะปิด (${escapeHtml(dates.join(', '))}${affected.length > 5 ? ' …' : ''})<br>
+    <span style="font-size:0.8rem;">การจองเดิมจะยังคงอยู่ หากต้องการยกเลิกให้ไปที่แท็บ "รายการจอง"</span>`;
+  warnEl.classList.remove('hidden');
+}
+
+function saveRoomClosure() {
+  if (!closureEditingRoomKey) return;
+  const errEl = document.getElementById('errClosure');
+  errEl.textContent = '';
+
+  const mode = getClosureModeValue();
+  const reason = document.getElementById('closureReason').value.trim();
+  const closure = { mode, reason };
+
+  if (mode === 'range') {
+    const start = document.getElementById('closureStart').value;
+    const end = document.getElementById('closureEnd').value;
+    if (!start || !end) { errEl.textContent = 'กรุณาเลือกวันที่เริ่มและวันที่สิ้นสุด'; return; }
+    if (start > end) { errEl.textContent = 'วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม'; return; }
+    if (end < toDateStr(new Date())) { errEl.textContent = 'ช่วงวันที่นี้ผ่านไปแล้ว'; return; }
+    closure.start = start;
+    closure.end = end;
+  }
+
+  const roomKey = closureEditingRoomKey;
+  const options = getFormOptions();
+  options.roomClosures[roomKey] = closure;
+  options._updatedAt = Date.now();
+  saveFormOptions(options);
+  closeRoomClosureModal();
+  renderAdminOptionsManager();
+  showToast(`🔒 ปิดการจอง "${roomKey}" (${closurePeriodText(closure)}) และซิงค์ขึ้นคลาวด์เรียบร้อย`, 'success');
+}
+
+function reopenRoom() {
+  if (!closureEditingRoomKey) return;
+  const roomKey = closureEditingRoomKey;
+  const options = getFormOptions();
+  delete options.roomClosures[roomKey];
+  options._updatedAt = Date.now();
+  saveFormOptions(options);
+  closeRoomClosureModal();
+  renderAdminOptionsManager();
+  showToast(`🔓 เปิดให้จอง "${roomKey}" ตามปกติแล้ว`, 'success');
+}
+
+// สถานะที่แสดงบนชิปในหน้าแอดมิน
+function closureChipInfo(roomKey, options) {
+  const c = getActiveRoomClosure(roomKey, options);
+  if (!c) return { cls: '', badge: '', lockIcon: '🔓', lockTitle: 'ปิดการจองสถานที่นี้' };
+  const today = toDateStr(new Date());
+  const reason = c.reason ? ` · ${escapeHtml(c.reason)}` : '';
+  if (c.mode === 'manual') {
+    return { cls: 'is-closed', badge: `<span class="opt-chip-status">🔒 ปิดอยู่${reason}</span>`, lockIcon: '🔒', lockTitle: 'แก้ไข / เปิดให้จอง' };
+  }
+  if (c.start <= today) {
+    return { cls: 'is-closed', badge: `<span class="opt-chip-status">🔒 ปิดถึง ${formatDateThai(c.end)}${reason}</span>`, lockIcon: '🔒', lockTitle: 'แก้ไข / เปิดให้จอง' };
+  }
+  return { cls: 'is-scheduled', badge: `<span class="opt-chip-status">🗓️ จะปิด ${closurePeriodText(c)}${reason}</span>`, lockIcon: '🗓️', lockTitle: 'แก้ไข / ยกเลิกการปิด' };
+}
+
 function resetFormOptionsToDefault() {
   if (!confirm('ต้องการคืนค่าตัวเลือกหน้าจองทั้งหมดเป็นค่าเริ่มต้นใช่หรือไม่?')) return;
   const def = JSON.parse(JSON.stringify(DEFAULT_FORM_OPTIONS));
@@ -271,6 +485,7 @@ function refreshAllFormOptions() {
   const roomSelect = document.getElementById('room');
   if (roomSelect) {
     const curVal = roomSelect.value;
+    const bookingDate = getBookingDateValue();
     let html = '<option value="">-- เลือกห้อง/สถานที่ --</option>';
     options.venueCategories.forEach(cat => {
       if (cat.type === 'classroom_grades' && cat.grades) {
@@ -284,7 +499,8 @@ function refreshAllFormOptions() {
       } else if (Array.isArray(cat.rooms)) {
         html += `<optgroup label="${escapeHtml(cat.label)}">`;
         cat.rooms.forEach(r => {
-          html += `<option value="${escapeHtml(r)}" ${r === curVal ? 'selected' : ''}>${escapeHtml(r)}</option>`;
+          const opt = roomOptionLabel(r, bookingDate, options);
+          html += `<option value="${escapeHtml(r)}" ${r === curVal ? 'selected' : ''} ${opt.disabled ? 'disabled' : ''}>${escapeHtml(opt.label)}</option>`;
         });
         html += `</optgroup>`;
       }
@@ -473,12 +689,17 @@ function renderAdminOptionsManager() {
                 🏫 ห้องเรียนในระดับ ${escapeHtml(curGradeData.fullName || optActiveClassroomGrade)}:
               </div>
               <div class="opt-chips-grid">
-                ${(curGradeData.rooms || []).map(r => `
-                  <span class="opt-chip">
+                ${(curGradeData.rooms || []).map((r, rIdx) => {
+                  const ci = closureChipInfo(`ห้อง ${r}`, options);
+                  return `
+                  <span class="opt-chip ${ci.cls}">
                     <span>ห้อง ${escapeHtml(r)}</span>
+                    ${ci.badge}
+                    <button type="button" class="opt-chip-lock" onclick="openClassroomClosureModal('${optActiveClassroomGrade}', ${rIdx})" title="${ci.lockTitle}">${ci.lockIcon}</button>
                     <button type="button" class="opt-chip-delete" onclick="deleteClassroomSubRoom('${optActiveClassroomGrade}', '${r}')" title="ลบห้องนี้">✕</button>
                   </span>
-                `).join('')}
+                `;
+                }).join('')}
               </div>
               <div class="opt-add-group">
                 <input type="text" id="newSubRoomInput" class="opt-add-input" placeholder="พิมพ์เลขห้อง... เช่น 105" onkeydown="if(event.key==='Enter'){event.preventDefault();addClassroomSubRoom('${optActiveClassroomGrade}');}" />
@@ -500,12 +721,17 @@ function renderAdminOptionsManager() {
             </div>
             <div class="opt-card-body">
               <div class="opt-chips-grid">
-                ${roomList.length ? roomList.map((r, rIdx) => `
-                  <span class="opt-chip">
+                ${roomList.length ? roomList.map((r, rIdx) => {
+                  const ci = closureChipInfo(r, options);
+                  return `
+                  <span class="opt-chip ${ci.cls}">
                     <span>${escapeHtml(r)}</span>
+                    ${ci.badge}
+                    <button type="button" class="opt-chip-lock" onclick="openRoomClosureModal(${catIdx}, ${rIdx})" title="${ci.lockTitle}">${ci.lockIcon}</button>
                     <button type="button" class="opt-chip-delete" onclick="deleteRoom(${catIdx}, ${rIdx})" title="ลบสถานที่นี้">✕</button>
                   </span>
-                `).join('') : '<span style="color:#9ca3af;font-size:0.85rem;">ยังไม่มีสถานที่ในหมวดนี้</span>'}
+                `;
+                }).join('') : '<span style="color:#9ca3af;font-size:0.85rem;">ยังไม่มีสถานที่ในหมวดนี้</span>'}
               </div>
               <div class="opt-add-group">
                 <input type="text" id="newRoomInput_${catIdx}" class="opt-add-input" placeholder="พิมพ์ชื่อสถานที่ใหม่ในหมวดนี้..." onkeydown="if(event.key==='Enter'){event.preventDefault();addRoomToCategory(${catIdx});}" />
@@ -616,6 +842,7 @@ function deleteRoom(catIdx, roomIdx) {
   const options = getFormOptions();
   if (!options.venueCategories[catIdx]) return;
   const removed = options.venueCategories[catIdx].rooms.splice(roomIdx, 1);
+  delete options.roomClosures[removed[0]];
   options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
@@ -646,6 +873,7 @@ function deleteCategory(catIdx) {
   if (!options.venueCategories[catIdx]) return;
   const label = options.venueCategories[catIdx].label;
   if (!confirm(`ต้องการลบหมวดหมู่ "${label}" และสถานที่ทั้งหมดในหมวดหมู่นี้ใช่หรือไม่?`)) return;
+  (options.venueCategories[catIdx].rooms || []).forEach(r => delete options.roomClosures[r]);
   options.venueCategories.splice(catIdx, 1);
   options._updatedAt = Date.now();
   saveFormOptions(options);
@@ -677,6 +905,7 @@ function deleteClassroomSubRoom(gradeKey, roomNum) {
   const crCat = options.venueCategories.find(c => c.type === 'classroom_grades');
   if (!crCat || !crCat.grades || !crCat.grades[gradeKey]) return;
   crCat.grades[gradeKey].rooms = (crCat.grades[gradeKey].rooms || []).filter(r => r !== roomNum);
+  delete options.roomClosures[`ห้อง ${roomNum}`];
   options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
@@ -1499,6 +1728,7 @@ function handleRoomChange() {
     selectedClassrooms.clear();
     renderSelectedChips();
   }
+  validateSelectedRoomsOpen();
 }
 
 function switchClassroomGrade(gradeKey) {
@@ -1515,12 +1745,18 @@ function toggleClassroomRoom(roomNum) {
   }
   renderClassroomGrid();
   renderSelectedChips();
+  validateSelectedRoomsOpen();
 }
 
 function selectAllCurrentGrade() {
   const data = CLASSROOM_ROOMS[activeClassroomGrade];
   if (data) {
-    data.rooms.forEach(r => selectedClassrooms.add(`ห้อง ${r}`));
+    const dateStr = getBookingDateValue();
+    const options = getFormOptions();
+    data.rooms
+      .map(r => `ห้อง ${r}`)
+      .filter(roomName => !isRoomClosedOn(roomName, dateStr, options))
+      .forEach(roomName => selectedClassrooms.add(roomName));
     renderClassroomGrid();
     renderSelectedChips();
   }
@@ -1530,12 +1766,14 @@ function clearClassroomSelection() {
   selectedClassrooms.clear();
   renderClassroomGrid();
   renderSelectedChips();
+  validateSelectedRoomsOpen();
 }
 
 function removeSelectedClassroom(roomName) {
   selectedClassrooms.delete(roomName);
   renderClassroomGrid();
   renderSelectedChips();
+  validateSelectedRoomsOpen();
 }
 
 function renderClassroomGrid() {
@@ -1552,9 +1790,21 @@ function renderClassroomGrid() {
   const gradeData = CLASSROOM_ROOMS[activeClassroomGrade];
   if (!gradeData || !grid) return;
 
+  const dateStr = getBookingDateValue();
+  const options = getFormOptions();
   grid.innerHTML = gradeData.rooms.map(r => {
     const roomName = `ห้อง ${r}`;
     const isChecked = selectedClassrooms.has(roomName);
+    if (isRoomClosedOn(roomName, dateStr, options)) {
+      const c = getActiveRoomClosure(roomName, options);
+      return `
+      <div class="room-card-btn closed ${isChecked ? 'checked' : ''}" title="ปิดให้จอง: ${escapeHtml(closureReasonText(c))} (${escapeHtml(closurePeriodText(c))})"
+        ${isChecked ? `onclick="toggleClassroomRoom('${r}')"` : ''}>
+        <span class="cr-check-icon">🔒</span>
+        <span>ห้อง ${r}</span>
+      </div>
+    `;
+    }
     return `
       <div class="room-card-btn ${isChecked ? 'checked' : ''}" onclick="toggleClassroomRoom('${r}')">
         <span class="cr-check-icon">${isChecked ? '✓' : ''}</span>
@@ -1866,6 +2116,15 @@ async function submitBooking(event) {
     submitBtn.innerHTML = originalBtnHtml;
   }
 
+  // Room closure check (ใช้ตัวเลือกล่าสุดหลังดึงจากคลาวด์)
+  refreshAllFormOptions();
+  if (!validateSelectedRoomsOpen()) {
+    const roomEl = document.getElementById('room');
+    if (roomEl) roomEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showToast('ห้องที่เลือกปิดให้จองในวันที่เลือก กรุณาเลือกห้องหรือวันอื่น', 'error');
+    return;
+  }
+
   // Conflict check with live data
   const conflict = hasConflict(newBooking);
   if (conflict) {
@@ -1945,6 +2204,7 @@ function clearForm() {
   document.getElementById('classroomSelector').classList.add('hidden');
   selectedClassrooms.clear();
   renderSelectedChips();
+  refreshAllFormOptions();
   clearErrors();
 }
 function closeSuccess()  { document.getElementById('successModal').classList.add('hidden'); }
@@ -2138,6 +2398,7 @@ function showBookingFormForDate(dateStr) {
   const dInput = document.getElementById('bookingDate');
   if (dInput && dateStr) {
     dInput.value = dateStr;
+    handleBookingDateChange();
   }
 }
 
@@ -4143,7 +4404,10 @@ function getISOWeekYear(date) {
 document.addEventListener('DOMContentLoaded', () => {
   // Set min date to today
   const dateInput = document.getElementById('bookingDate');
-  if (dateInput) dateInput.min = toDateStr(new Date());
+  if (dateInput) {
+    dateInput.min = toDateStr(new Date());
+    dateInput.addEventListener('change', handleBookingDateChange);
+  }
 
   // Initialize Dynamic Form Options
   refreshAllFormOptions();
@@ -4184,6 +4448,13 @@ document.addEventListener('DOMContentLoaded', () => {
   window.syncFormOptionsToCloud  = syncFormOptionsToCloud;
   window.syncOptionsFromCloudManual = syncOptionsFromCloudManual;
   window.fillPreset              = fillPreset;
+  window.openRoomClosureModal    = openRoomClosureModal;
+  window.openClassroomClosureModal = openClassroomClosureModal;
+  window.closeRoomClosureModal   = closeRoomClosureModal;
+  window.onClosureModeChange     = onClosureModeChange;
+  window.updateClosureBookingWarning = updateClosureBookingWarning;
+  window.saveRoomClosure         = saveRoomClosure;
+  window.reopenRoom              = reopenRoom;
   window.handleManagePeriodChange = handleManagePeriodChange;
   window.resetManagePeriod       = resetManagePeriod;
   window.initAdminManagePeriod   = initAdminManagePeriod;
