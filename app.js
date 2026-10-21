@@ -1609,6 +1609,7 @@ function showPage(page) {
     venues:   { page: 'pageVenues',   nav: 'navVenues'   },
     venueDetail: { page: 'pageVenueDetail', nav: 'navVenues' },
     search:   { page: 'pageSearch',   nav: 'navSearch'   },
+    cancel:   { page: 'pageCancel',   nav: 'navCancel'   },
     admin:    { page: 'pageAdmin',    nav: 'navAdmin'    },
     report:   { page: 'pageAdmin',    nav: 'navReport'   },
   };
@@ -1638,6 +1639,10 @@ function showPage(page) {
   }
   if (page === 'search') {
     renderSearchPage();
+    fetchGoogleSheetsBookings(true);
+  }
+  if (page === 'cancel') {
+    renderCancelPage();
     fetchGoogleSheetsBookings(true);
   }
   if (page === 'admin') {
@@ -2228,8 +2233,13 @@ async function submitBooking(event) {
     }
   }
 
+  // รหัส 6 หลักสำหรับยกเลิกการจองเอง (cancel.js) ต้องสร้างหลังบันทึกขึ้นคลาวด์แล้ว
+  const cancelCode = typeof assignCancelCode === 'function' ? await assignCancelCode([newBooking.id]) : null;
+  state.lastCancelCode = cancelCode || null;
+
   document.getElementById('successMessage').textContent =
     `จอง "${roomSelection.roomString}" วันที่ ${formatDateThai(bookingDate)} เวลา ${startTime}–${endTime} น. สำเร็จแล้ว!`;
+  if (typeof renderSuccessCode === 'function') renderSuccessCode(cancelCode);
   document.getElementById('successModal').classList.remove('hidden');
 
   clearForm();
@@ -2268,13 +2278,13 @@ function closeConflict() { document.getElementById('conflictModal').classList.ad
 function printCurrentBooking() {
   // จองหลายวัน → พิมพ์ใบสรุปรวมใบเดียว
   if (Array.isArray(state.lastBookingIds) && state.lastBookingIds.length > 1 && typeof printMultiDaySummary === 'function') {
-    printMultiDaySummary(state.lastBookingIds);
+    printMultiDaySummary(state.lastBookingIds, state.lastCancelCode);
     closeSuccess();
     return;
   }
   if (!state.lastBookingId) return;
   const b = getBookingById(state.lastBookingId);
-  if (b) openPrintPreview(b);
+  if (b) openPrintPreview(b, state.lastCancelCode);
   closeSuccess();
 }
 
@@ -3018,6 +3028,7 @@ function viewBookingDetail(id) {
       <div class="detail-item"><div class="detail-label">วันที่ยื่นจอง</div><div class="detail-value">${formatDateTimeThai(b.createdAt)}</div></div>
     </div>
   `;
+  if (typeof updateDetailCancelButton === 'function') updateDetailCancelButton(b);
   document.getElementById('bookingDetailModal').classList.remove('hidden');
 }
 function closeBookingDetail() { document.getElementById('bookingDetailModal').classList.add('hidden'); }
@@ -3781,7 +3792,7 @@ function getPeriodLabel(type) {
 // ============================================================
 // PRINT
 // ============================================================
-function openPrintPreview(b) {
+function openPrintPreview(b, cancelCode = null) {
   if (!b) return;
   const html = `
     <div class="slip-print-container">
@@ -3803,6 +3814,7 @@ function openPrintPreview(b) {
         <tr><td class="slip-label">รูปแบบการจัดห้อง</td><td>${escapeHtml(b.roomLayout || '–')}</td></tr>
         <tr><td class="slip-label">สถานะ</td><td>${statusLabel(b.status)}</td></tr>
         <tr><td class="slip-label">วันที่ยื่นจอง</td><td>${formatDateTimeThai(b.createdAt)}</td></tr>
+        ${cancelCode ? `<tr><td class="slip-label">รหัสยกเลิกการจอง</td><td><strong style="font-size:1.3em;letter-spacing:4px;">${escapeHtml(cancelCode)}</strong><br><small>เก็บรหัสนี้ไว้เพื่อใช้ยกเลิกการจองด้วยตนเอง (เมนู "ยกเลิกการจอง")</small></td></tr>` : ''}
       </table>
       <div style="margin-top:48px;display:flex;justify-content:space-between;gap:40px">
         <div style="text-align:center;flex:1"><div style="width:160px;border-top:1px solid #000;margin:0 auto;padding-top:6px">ผู้จอง</div></div>

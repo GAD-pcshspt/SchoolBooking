@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261021_3" />
+  <link rel="stylesheet" href="style.css?v=20261021_4" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
@@ -46,6 +46,7 @@
       <a href="#" class="nav-link" onclick="showPage('calendar')" id="navCalendar">📅 ปฏิทินการจอง</a>
       <a href="#" class="nav-link" onclick="showPage('venues')" id="navVenues">🏢 ข้อมูลสถานที่</a>
       <a href="#" class="nav-link" onclick="showPage('search')" id="navSearch">🔍 ค้นหาห้องว่าง</a>
+      <a href="#" class="nav-link" onclick="showPage('cancel')" id="navCancel">❌ ยกเลิกการจอง</a>
       <a href="#" class="nav-link admin-only hidden" onclick="showPage('admin')" id="navAdmin">⚙️ จัดการ (Admin)</a>
       <a href="#" class="nav-link admin-only hidden" onclick="showPage('report')" id="navReport">📊 รายงาน</a>
       <button type="button" class="btn-nav-refresh" onclick="manualRefreshData()"
@@ -429,6 +430,35 @@
           <button type="button" class="btn-primary search-btn" onclick="runRoomSearch()">🔍 ค้นหา</button>
         </div>
         <div id="srResults"></div>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: CANCEL (ยกเลิกการจองด้วยรหัส 6 หลัก, cancel.js) ===== -->
+    <section class="page hidden" id="pageCancel">
+      <div class="page-header">
+        <h2 class="page-title">
+          <span class="page-title-icon">❌</span>
+          ยกเลิกการจอง
+        </h2>
+        <p class="page-subtitle">ใช้รหัส 6 หลักที่ได้ตอนจองเสร็จ เพื่อยกเลิกการจองของคุณ ระบบจะแจ้งผู้ดูแลห้องทางไลน์ให้อัตโนมัติ</p>
+      </div>
+
+      <div class="cancel-unavailable hidden" id="cancelUnavailable">
+        ⚠️ ขณะนี้ระบบไม่ได้เชื่อมต่อฐานข้อมูลออนไลน์ จึงยกเลิกด้วยรหัสไม่ได้ กรุณาติดต่อแอดมิน
+      </div>
+
+      <div class="cancel-section">
+        <h3 class="cancel-section-title">📱 การจองที่ทำจากเครื่องนี้</h3>
+        <div id="myBookingsList"></div>
+      </div>
+
+      <div class="cancel-section">
+        <h3 class="cancel-section-title">🔍 ค้นหาการจองของคุณ</h3>
+        <p class="cancel-section-desc">จองจากเครื่องอื่น? พิมพ์ชื่อผู้จอง แล้วกด "ยกเลิก" ที่การจองที่ต้องการ
+          (หรือกดที่การจองในปฏิทิน แล้วกด "ยกเลิกการจองนี้" ก็ได้)</p>
+        <input type="search" id="cancelSearchInput" class="form-input" placeholder="พิมพ์ชื่อผู้จอง..."
+          oninput="renderCancelSearch()" />
+        <div id="cancelSearchResults"></div>
       </div>
     </section>
 
@@ -1035,6 +1065,8 @@
       <div class="success-icon">✅</div>
       <h3>จองสำเร็จ!</h3>
       <p id="successMessage"></p>
+      <!-- รหัสยกเลิกการจอง 6 หลัก (cancel.js) -->
+      <div class="success-code hidden" id="successCodeBox"></div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeSuccess()">ปิด</button>
         <button class="btn-primary" onclick="printCurrentBooking()">🖨️ พิมพ์ใบจอง</button>
@@ -1051,6 +1083,7 @@
       </div>
       <div class="modal-body" id="bookingDetailBody"></div>
       <div class="modal-footer">
+        <button class="btn-cancel-booking hidden" id="btnDetailCancel" onclick="cancelFromDetail()">❌ ยกเลิกการจองนี้</button>
         <button class="btn-secondary" onclick="closeBookingDetail()">ปิด</button>
         <button class="btn-primary" onclick="printCurrentDetail()">🖨️ พิมพ์ใบจอง</button>
       </div>
@@ -1130,6 +1163,39 @@
         <button class="btn-secondary closure-reopen-btn hidden" id="btnReopenRoom" onclick="reopenRoom()">🔓 เปิดให้จองตามปกติ</button>
         <button class="btn-secondary" onclick="closeRoomClosureModal()">ยกเลิก</button>
         <button class="btn-primary" onclick="saveRoomClosure()">💾 บันทึกการปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cancel With Code Modal (cancel.js) -->
+  <div class="modal-overlay hidden" id="cancelModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>❌ ยกเลิกการจอง</h3>
+        <button class="btn-close-modal" onclick="closeCancelModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="cx-summary" id="cxSummary"></div>
+        <div id="cxStepCode">
+          <label for="cxCode" class="form-label">กรอกรหัส 6 หลักที่ได้ตอนจองเสร็จ</label>
+          <input type="text" id="cxCode" class="form-input cx-code-input" inputmode="numeric" maxlength="6"
+            autocomplete="off" placeholder="••••••"
+            oninput="this.value = this.value.replace(/\D/g, '')"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();verifyCancelCode();}" />
+          <p class="cx-hint">รหัสอยู่ในหน้าต่าง "จองสำเร็จ" และในใบจองที่พิมพ์/บันทึกไว้ · กรอกผิดเกิน 5 ครั้งจะถูกล็อก</p>
+        </div>
+        <div id="cxStepConfirm" class="hidden">
+          <div class="cx-verified">✅ รหัสถูกต้อง</div>
+          <div class="cx-list" id="cxList"></div>
+          <label for="cxReason" class="form-label">เหตุผลที่ยกเลิก (ไม่บังคับ จะแจ้งในไลน์ด้วย)</label>
+          <input type="text" id="cxReason" class="form-input" maxlength="200" placeholder="เช่น เลื่อนกิจกรรม, เปลี่ยนสถานที่" />
+        </div>
+        <span class="field-error" id="errCancel"></span>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeCancelModal()">ปิด</button>
+        <button class="btn-primary" id="btnCxVerify" onclick="verifyCancelCode()">🔑 ตรวจสอบรหัส</button>
+        <button class="btn-cancel-booking solid hidden" id="btnCxConfirm" onclick="confirmCancelWithCode()">❌ ยืนยันยกเลิก</button>
       </div>
     </div>
   </div>
@@ -1328,8 +1394,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20261010_9"></script>
-  <script src="app.js?v=20261021_3"></script>
-  <script src="venues.js?v=20261021_3"></script>
-  <script src="multiday.js?v=20261021_3"></script>
+  <script src="app.js?v=20261021_4"></script>
+  <script src="venues.js?v=20261021_4"></script>
+  <script src="multiday.js?v=20261021_4"></script>
+  <script src="cancel.js?v=20261021_4"></script>
 </body>
 </html>

@@ -4,3 +4,5 @@ GoogleAppsScript_Code.js
 node_modules/
 package.json
 package-lock.json
+# SQL ที่มีรหัสลับ (รันใน Supabase SQL Editor เท่านั้น ห้ามขึ้น GitHub)
+supabase/sql/*.local.sql

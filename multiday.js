@@ -520,6 +520,11 @@ async function submitMultiDayBooking(base) {
     if (failed) showToast(`⚠️ บันทึกขึ้นคลาวด์ไม่สำเร็จ ${failed} รายการ (เก็บไว้ในเครื่องแล้ว) กรุณากดรีเฟรชข้อมูล`, 'warning');
   }
 
+  // รหัสเดียวสำหรับทั้งชุด (cancel.js)
+  const cancelCode = typeof assignCancelCode === 'function' ? await assignCancelCode(created.map(b => b.id)) : null;
+  state.lastCancelCode = cancelCode || null;
+  if (typeof renderSuccessCode === 'function') renderSuccessCode(cancelCode);
+
   document.getElementById('successMessage').innerHTML = `
     จองสำเร็จทั้งหมด <strong>${created.length} วัน</strong>
     <div class="success-days">
@@ -534,7 +539,7 @@ async function submitMultiDayBooking(base) {
 }
 
 // ใบจองสรุปรวมหลายวันในใบเดียว
-function printMultiDaySummary(ids) {
+function printMultiDaySummary(ids, cancelCode = null) {
   const list = ids.map(id => getBookingById(id)).filter(Boolean).sort((a, b) => a.bookingDate.localeCompare(b.bookingDate));
   if (!list.length) return;
   const b0 = list[0];
@@ -553,6 +558,7 @@ function printMultiDaySummary(ids) {
         <tr><td class="slip-label">ฝ่ายงาน</td><td>${escapeHtml(b0.department || '-')}</td></tr>
         <tr><td class="slip-label">จำนวนวันที่จอง</td><td><strong>${list.length} วัน</strong> (${escapeHtml(formatDateThai(list[0].bookingDate))} – ${escapeHtml(formatDateThai(list[list.length - 1].bookingDate))})</td></tr>
         <tr><td class="slip-label">วันที่ยื่นจอง</td><td>${formatDateTimeThai(b0.createdAt)}</td></tr>
+        ${cancelCode ? `<tr><td class="slip-label">รหัสยกเลิกการจอง</td><td><strong style="font-size:1.3em;letter-spacing:4px;">${escapeHtml(cancelCode)}</strong><br><small>รหัสเดียวใช้ได้ทุกวันในชุดนี้ (เมนู "ยกเลิกการจอง")</small></td></tr>` : ''}
       </table>
       <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px;">
         <thead><tr>

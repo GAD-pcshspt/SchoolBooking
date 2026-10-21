@@ -3914,6 +3914,157 @@ input, select, textarea { font-family: var(--font-body); }
   line-height: 1.8;
 }
 
+/* ============================================================
+   ยกเลิกการจองด้วยรหัส 6 หลัก (cancel.js)
+   ============================================================ */
+.success-code {
+  margin: 14px 0 4px;
+  padding: 16px 14px;
+  border: 2px dashed var(--orange-400);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #fffbeb, var(--orange-50));
+  text-align: center;
+}
+.sc-label { font-weight: 800; color: var(--navy-800); font-size: 0.95rem; }
+.sc-code { display: flex; justify-content: center; gap: 6px; margin: 10px 0 8px; }
+.sc-code span {
+  width: 42px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border: 2px solid var(--navy-800);
+  border-radius: var(--radius-md);
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--navy-900);
+  font-family: 'Courier New', monospace;
+}
+.sc-copy {
+  background: var(--navy-800);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sc-copy:hover { background: var(--navy-700); }
+.sc-warning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-md);
+  color: #b91c1c;
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.sc-hint { margin-top: 8px; font-size: 0.78rem; color: var(--gray-600); line-height: 1.5; }
+.sc-fail { color: #92400e; font-weight: 700; font-size: 0.88rem; }
+
+.btn-cancel-booking {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--white);
+  color: var(--danger);
+  border: 1.5px solid #fca5a5;
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+.btn-cancel-booking:hover { background: #fee2e2; border-color: var(--danger); }
+.btn-cancel-booking.solid { background: var(--danger); color: var(--white); border-color: var(--danger); }
+.btn-cancel-booking.solid:hover { background: #b91c1c; }
+.btn-cancel-booking:disabled { opacity: 0.5; cursor: not-allowed; }
+#bookingDetailModal .modal-footer .btn-cancel-booking { margin-right: auto; }
+
+.cancel-unavailable {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  color: #92400e;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.cancel-section {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.cancel-section-title { font-size: 1rem; color: var(--navy-800); margin-bottom: 10px; }
+.cancel-section-desc { font-size: 0.84rem; color: var(--gray-500); margin-bottom: 10px; }
+#cancelSearchResults { margin-top: 10px; }
+.cx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--gray-200);
+}
+.cx-row:last-child { border-bottom: none; }
+.cx-row-main { min-width: 0; }
+.cx-row-title { font-weight: 700; color: var(--gray-800); }
+.cx-row-sub { font-size: 0.8rem; color: var(--gray-600); }
+
+.cx-summary {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+.cx-code-input {
+  font-size: 1.6rem;
+  letter-spacing: 10px;
+  text-align: center;
+  font-weight: 800;
+  font-family: 'Courier New', monospace;
+}
+.cx-hint { font-size: 0.78rem; color: var(--gray-500); margin-top: 6px; }
+.cx-verified { font-weight: 700; color: #15803d; margin-bottom: 8px; }
+.cx-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.cx-list-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--gray-600); }
+.cx-list-head button { background: none; border: none; color: var(--navy-600); font-weight: 700; cursor: pointer; font-size: 0.8rem; }
+.cx-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.cx-choice:has(input:checked) { border-color: var(--danger); background: #fef2f2; }
+.cx-choice.disabled { opacity: 0.55; cursor: not-allowed; }
+.cx-choice input { accent-color: var(--danger); width: 16px; height: 16px; }
+.cx-choice em { margin-left: auto; font-size: 0.72rem; color: var(--gray-500); font-style: normal; }
+
+@media (max-width: 480px) {
+  .sc-code span { width: 38px; height: 48px; font-size: 1.5rem; }
+  .sc-warning { font-size: 0.92rem; }
+  .cx-row { flex-direction: column; align-items: stretch; }
+  .cx-row .btn-cancel-booking { justify-content: center; }
+  #bookingDetailModal .modal-footer { flex-wrap: wrap; }
+  #bookingDetailModal .modal-footer .btn-cancel-booking { flex: 1 1 100%; justify-content: center; margin-right: 0; }
+}
+
 @media (max-width: 900px) {
   .md-layout { grid-template-columns: 1fr; }
   .md-cal { max-width: 420px; width: 100%; margin: 0 auto; }
