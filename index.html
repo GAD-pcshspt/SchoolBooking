@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261019_1" />
+  <link rel="stylesheet" href="style.css?v=20261021_2" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
@@ -44,6 +44,8 @@
     <nav class="main-nav" id="mainNav">
       <a href="#" class="nav-link active" onclick="showPage('booking')" id="navBooking">📝 จองสถานที่</a>
       <a href="#" class="nav-link" onclick="showPage('calendar')" id="navCalendar">📅 ปฏิทินการจอง</a>
+      <a href="#" class="nav-link" onclick="showPage('venues')" id="navVenues">🏢 ข้อมูลสถานที่</a>
+      <a href="#" class="nav-link" onclick="showPage('search')" id="navSearch">🔍 ค้นหาห้องว่าง</a>
       <a href="#" class="nav-link admin-only hidden" onclick="showPage('admin')" id="navAdmin">⚙️ จัดการ (Admin)</a>
       <a href="#" class="nav-link admin-only hidden" onclick="showPage('report')" id="navReport">📊 รายงาน</a>
       <button type="button" class="btn-nav-refresh" onclick="manualRefreshData()"
@@ -55,6 +57,9 @@
 
   <!-- ===== MAIN CONTENT ===== -->
   <main class="main-content">
+
+    <!-- ===== ANNOUNCEMENT BAR (ทุกหน้า, rendered by venues.js) ===== -->
+    <div class="announce-bar hidden" id="announceBar"></div>
 
     <!-- ===== PAGE: BOOKING FORM ===== -->
     <section class="page active" id="pageBooking">
@@ -69,6 +74,15 @@
       </div>
 
       <div class="form-container">
+        <!-- จองแบบครั้งก่อน (แสดงเมื่อเคยจองจากเครื่องนี้) -->
+        <div class="last-booking-bar hidden" id="lastBookingBar">
+          <div class="last-booking-text">
+            <span class="last-booking-label">⭐ จองแบบครั้งก่อน</span>
+            <span class="last-booking-summary" id="lastBookingSummary"></span>
+          </div>
+          <button type="button" class="btn-last-booking" onclick="applyLastBooking()">ใช้ข้อมูลนี้</button>
+        </div>
+
         <form id="bookingForm" onsubmit="submitBooking(event)" novalidate>
 
           <!-- Row 1: Name + Position -->
@@ -245,11 +259,15 @@
         <div class="calendar-view-toggle" id="calViewToggle">
           <button type="button" class="view-toggle-btn active" id="btnViewScroll" onclick="setCalViewMode('scroll')"
             title="ตารางเดือนแบบขยายเต็ม เลื่อนซ้าย-ขวาได้">
-            ↔️ ขยายเต็ม (เลื่อนดู)
+            ↔️ ขยายเต็ม<span class="vt-long"> (เลื่อนดู)</span>
           </button>
           <button type="button" class="view-toggle-btn" id="btnViewList" onclick="setCalViewMode('list')"
             title="แสดงเป็นมุมมองรายการจองทั้งหมดของเดือน">
-            📋 มุมมองรายการจอง
+            📋 <span class="vt-long">มุมมอง</span>รายการ<span class="vt-long">จอง</span>
+          </button>
+          <button type="button" class="view-toggle-btn" id="btnViewTimeline" onclick="setCalViewMode('timeline')"
+            title="ตารางเวลาของทุกห้องในวันเดียว เห็นช่วงว่าง/ไม่ว่างทันที">
+            🕒 ตาราง<span class="vt-long">รายวัน</span>แยกห้อง
           </button>
         </div>
         <div class="calendar-filter">
@@ -298,11 +316,107 @@
         </div>
       </div>
 
+      <!-- Day Timeline View (rendered by venues.js) -->
+      <div class="calendar-timeline-view hidden" id="calendarTimelineView"></div>
+
       <!-- Legend -->
       <div class="calendar-legend">
         <span class="legend-item"><span class="legend-dot today"></span> วันนี้</span>
         <span class="legend-item"><span class="legend-dot approved"></span> มีการจอง</span>
         <span class="legend-item"><span class="legend-dot empty"></span> ว่าง</span>
+      </div>
+    </section>
+
+    <!-- ===== PAGE: VENUES (ข้อมูลสถานที่) ===== -->
+    <section class="page hidden" id="pageVenues">
+      <div class="page-header">
+        <h2 class="page-title">
+          <span class="page-title-icon">🏢</span>
+          ข้อมูลสถานที่
+        </h2>
+        <p class="page-subtitle">ดูข้อมูลและสถานะของแต่ละห้อง กดที่ห้องเพื่อดูประกาศและตารางการใช้ห้องรายสัปดาห์</p>
+      </div>
+      <div class="venue-toolbar">
+        <input type="search" id="venueSearchInput" class="form-input" placeholder="🔍 พิมพ์ชื่อห้องเพื่อค้นหา..."
+          oninput="renderVenuesPage()" />
+        <div class="venue-legend">
+          <span>🟢 ว่างตอนนี้</span><span>🔴 ใช้งานอยู่</span><span>🔒 ปิดให้จอง</span>
+        </div>
+      </div>
+      <div id="venuesContainer"></div>
+    </section>
+
+    <!-- ===== PAGE: VENUE DETAIL (รายละเอียดห้อง) ===== -->
+    <section class="page hidden" id="pageVenueDetail">
+      <div id="venueDetailContainer"></div>
+    </section>
+
+    <!-- ===== PAGE: SEARCH (ค้นหาห้องว่าง) ===== -->
+    <section class="page hidden" id="pageSearch">
+      <div class="page-header">
+        <h2 class="page-title">
+          <span class="page-title-icon">🔍</span>
+          ค้นหาห้องว่าง
+        </h2>
+        <p class="page-subtitle">หาห้องที่ว่างในเวลาที่ต้องการ หรือดูว่าห้องที่สนใจว่างวันไหน ช่วงเวลาไหน แล้วกดเพื่อไปจองได้ทันที</p>
+      </div>
+
+      <div class="calendar-view-toggle search-tabs">
+        <button type="button" class="view-toggle-btn active" id="searchTabTime" onclick="switchSearchTab('time')">📅 หาห้องว่างตามเวลา</button>
+        <button type="button" class="view-toggle-btn" id="searchTabRoom" onclick="switchSearchTab('room')">🏢 ห้องนี้ว่างเมื่อไหร่</button>
+      </div>
+
+      <div class="search-panel" id="searchPanelTime">
+        <div class="search-form">
+          <div class="search-field">
+            <label for="stDate" class="sub-label">วันที่</label>
+            <input type="date" id="stDate" class="form-input" />
+          </div>
+          <div class="search-field">
+            <label for="stStart" class="sub-label">ตั้งแต่</label>
+            <input type="time" id="stStart" class="form-input" />
+          </div>
+          <div class="search-field">
+            <label for="stEnd" class="sub-label">ถึง</label>
+            <input type="time" id="stEnd" class="form-input" />
+          </div>
+          <div class="search-field">
+            <label for="stPeople" class="sub-label">จำนวนคน (ไม่บังคับ)</label>
+            <input type="number" id="stPeople" class="form-input" min="1" placeholder="เช่น 80" />
+          </div>
+          <button type="button" class="btn-primary search-btn" onclick="runTimeSearch()">🔍 ค้นหา</button>
+        </div>
+        <div id="stResults"></div>
+      </div>
+
+      <div class="search-panel hidden" id="searchPanelRoom">
+        <div class="search-form">
+          <div class="search-field wide">
+            <label for="srRoom" class="sub-label">ห้อง / สถานที่</label>
+            <select id="srRoom" class="form-select"></select>
+          </div>
+          <div class="search-field">
+            <label for="srFrom" class="sub-label">ตั้งแต่วันที่</label>
+            <input type="date" id="srFrom" class="form-input" />
+          </div>
+          <div class="search-field">
+            <label for="srTo" class="sub-label">ถึงวันที่ (ไม่เกิน 31 วัน)</label>
+            <input type="date" id="srTo" class="form-input" />
+          </div>
+          <div class="search-field">
+            <label for="srDuration" class="sub-label">ต้องการใช้อย่างน้อย</label>
+            <select id="srDuration" class="form-select">
+              <option value="30">30 นาที</option>
+              <option value="60" selected>1 ชั่วโมง</option>
+              <option value="120">2 ชั่วโมง</option>
+              <option value="180">3 ชั่วโมง</option>
+              <option value="240">4 ชั่วโมง</option>
+              <option value="480">8 ชั่วโมง</option>
+            </select>
+          </div>
+          <button type="button" class="btn-primary search-btn" onclick="runRoomSearch()">🔍 ค้นหา</button>
+        </div>
+        <div id="srResults"></div>
       </div>
     </section>
 
@@ -553,6 +667,9 @@
             <button type="button" class="opt-sub-tab active" onclick="switchOptSubTab('rooms')" id="optTabRooms">
               🏢 จัดการห้อง / สถานที่
             </button>
+            <button type="button" class="opt-sub-tab" onclick="switchOptSubTab('announcements')" id="optTabAnnouncements">
+              📢 ประกาศ
+            </button>
             <button type="button" class="opt-sub-tab" onclick="switchOptSubTab('positions')" id="optTabPositions">
               👥 จัดการตำแหน่ง
             </button>
@@ -566,7 +683,42 @@
 
           <!-- Sub-panel: Rooms -->
           <div id="optPanelRooms" class="opt-sub-panel">
+            <div class="opt-card" style="margin-bottom:16px;">
+              <div class="opt-card-header">
+                <span class="opt-card-title">⏰ เวลาทำการ</span>
+              </div>
+              <div class="opt-card-body">
+                <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:10px;">
+                  ใช้แสดงช่วงเวลาในตารางการใช้ห้อง และคำนวณช่วงว่างในหน้าค้นหาห้องว่าง (ไม่ได้ห้ามจองนอกเวลานี้)</p>
+                <div class="opt-add-group hours-group">
+                  <input type="time" id="optHoursStart" class="opt-add-input" />
+                  <span>ถึง</span>
+                  <input type="time" id="optHoursEnd" class="opt-add-input" />
+                  <button type="button" class="btn-opt-add" onclick="saveBookingHours()">💾 บันทึกเวลาทำการ</button>
+                </div>
+              </div>
+            </div>
+            <p class="opt-rooms-hint">✏️ แก้ไขข้อมูลห้อง (ความจุ ที่ตั้ง อุปกรณ์ ฯลฯ) · 🔓 ปิด/เปิดการจอง · ✕ ลบห้อง</p>
             <div id="optRoomsContainer"></div>
+          </div>
+
+          <!-- Sub-panel: Announcements -->
+          <div id="optPanelAnnouncements" class="opt-sub-panel hidden">
+            <div class="opt-card">
+              <div class="opt-card-header">
+                <span class="opt-card-title">📢 ประกาศบนหน้าเว็บ</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="opt-card-badge" id="optAnnouncementCount">0 ประกาศ</span>
+                  <button type="button" class="btn-opt-add" onclick="openAnnouncementEditor()">➕ เพิ่มประกาศ</button>
+                </div>
+              </div>
+              <div class="opt-card-body">
+                <p style="font-size:0.82rem;color:var(--gray-500);margin-bottom:12px;">
+                  แถบประกาศด้านบนของทุกหน้าจะแสดงประกาศที่กำลังมีผล และที่จะเริ่มภายใน 14 วัน
+                  ส่วนหน้า "ดูทั้งหมด" จะแยกประกาศเป็นรายเดือน ประกาศที่ผูกกับห้องจะแสดงในหน้ารายละเอียดห้องนั้นด้วย</p>
+                <div id="optAnnouncementsContainer"></div>
+              </div>
+            </div>
           </div>
 
           <!-- Sub-panel: Positions -->
@@ -970,6 +1122,130 @@
     </div>
   </div>
 
+  <!-- All Announcements Modal -->
+  <div class="modal-overlay hidden" id="announcementsModal">
+    <div class="modal-box large-modal">
+      <div class="modal-header">
+        <h3>📢 ประกาศทั้งหมด</h3>
+        <button class="btn-close-modal" onclick="closeAnnouncementsModal()">✕</button>
+      </div>
+      <div class="modal-body" id="announcementsModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn-primary" onclick="closeAnnouncementsModal()">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Announcement Editor Modal (Admin) -->
+  <div class="modal-overlay hidden" id="announcementEditModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="annEditTitle">📢 เพิ่มประกาศ</h3>
+        <button class="btn-close-modal" onclick="closeAnnouncementEditor()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="annTitle" class="form-label required">หัวข้อประกาศ</label>
+          <input type="text" id="annTitle" class="form-input" maxlength="120" placeholder="เช่น งดจองโรงยิมช่วงกีฬาสี" />
+        </div>
+        <div class="form-group">
+          <label for="annDetail" class="form-label">รายละเอียด (ไม่บังคับ)</label>
+          <textarea id="annDetail" class="form-textarea" rows="3" maxlength="500" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
+        </div>
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="annType" class="form-label">ประเภท</label>
+            <select id="annType" class="form-select" onchange="onAnnouncementTypeChange()">
+              <option value="info">ℹ️ ข่าวทั่วไป (สีน้ำเงิน)</option>
+              <option value="warning">⚠️ แจ้งเตือน (สีเหลือง)</option>
+              <option value="closure">🔒 ปิด / งดใช้ห้อง (สีเทา)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="annRoom" class="form-label">ผูกกับห้อง</label>
+            <select id="annRoom" class="form-select"></select>
+          </div>
+        </div>
+        <p class="closure-warn hidden" id="annClosureHint">
+          ประกาศประเภทนี้เป็นแค่ข้อความแจ้ง ไม่ได้ห้ามจองจริง ถ้าต้องการห้ามจอง ให้กดปุ่ม 🔒 ที่ห้องในแท็บ "จัดการห้อง / สถานที่"
+          (ระบบจะสร้างประกาศปิดห้องให้อัตโนมัติ)
+        </p>
+        <label class="form-label">ช่วงวันที่ของประกาศ</label>
+        <div class="datetime-row ann-date-row">
+          <div class="datetime-field">
+            <label for="annStart" class="sub-label required">ตั้งแต่วันที่</label>
+            <input type="date" id="annStart" class="form-input" />
+          </div>
+          <div class="datetime-field">
+            <label for="annEnd" class="sub-label required">ถึงวันที่</label>
+            <input type="date" id="annEnd" class="form-input" />
+          </div>
+        </div>
+        <label class="ann-pin-row">
+          <input type="checkbox" id="annPinned" />
+          <span>📌 ปักหมุด (แสดงบนสุดเสมอ)</span>
+        </label>
+        <span class="field-error" id="errAnnouncement"></span>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAnnouncementEditor()">ยกเลิก</button>
+        <button class="btn-primary" onclick="saveAnnouncement()">💾 บันทึกประกาศ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Room Detail Editor Modal (Admin) -->
+  <div class="modal-overlay hidden" id="roomDetailModal">
+    <div class="modal-box large-modal">
+      <div class="modal-header">
+        <h3>✏️ ข้อมูลห้อง: <span id="rdRoomName"></span></h3>
+        <button class="btn-close-modal" onclick="closeRoomDetailEditor()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="rdCapacity" class="form-label">👥 ความจุ (คน)</label>
+            <input type="number" id="rdCapacity" class="form-input" min="0" placeholder="เช่น 200" />
+          </div>
+          <div class="form-group">
+            <label for="rdLocation" class="form-label">📍 อาคาร / ชั้น</label>
+            <input type="text" id="rdLocation" class="form-input" placeholder="เช่น อาคาร 2 ชั้น 1" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="rdContact" class="form-label">📞 ผู้ดูแล / ติดต่อ</label>
+          <input type="text" id="rdContact" class="form-input" placeholder="เช่น ครูสมชาย 081-234-5678" />
+        </div>
+        <div class="form-group">
+          <label for="rdDescription" class="form-label">📝 คำอธิบายห้อง</label>
+          <textarea id="rdDescription" class="form-textarea" rows="2" placeholder="เช่น ห้องประชุมขนาดใหญ่ เหมาะกับการอบรมและสัมมนา"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🎤 อุปกรณ์ (กดเพื่อเลือก/ยกเลิก)</label>
+          <div class="rd-equip-wrap" id="rdEquipment"></div>
+          <div class="opt-add-group" style="margin-top:8px;">
+            <input type="text" id="rdEquipmentNew" class="opt-add-input" placeholder="เพิ่มอุปกรณ์อื่น เช่น เปียโน"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();addRoomDetailEquipment();}" />
+            <button type="button" class="btn-opt-add" onclick="addRoomDetailEquipment()">➕ เพิ่มอุปกรณ์</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="rdRules" class="form-label">📜 ระเบียบการใช้</label>
+          <textarea id="rdRules" class="form-textarea" rows="2" placeholder="เช่น ห้ามนำอาหารเข้า, จัดคืนสภาพห้องหลังใช้งาน"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">➕ หัวข้อเพิ่มเติม</label>
+          <div id="rdExtra"></div>
+          <button type="button" class="btn-opt-add" style="margin-top:8px;align-self:flex-start;" onclick="addRoomDetailExtra()">➕ เพิ่มหัวข้อ</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeRoomDetailEditor()">ยกเลิก</button>
+        <button class="btn-primary" onclick="saveRoomDetails()">💾 บันทึกข้อมูลห้อง</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast hidden" id="toast"><span id="toastMsg"></span></div>
 
@@ -977,6 +1253,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20261010_9"></script>
-  <script src="app.js?v=20261019_1"></script>
+  <script src="app.js?v=20261021_2"></script>
+  <script src="venues.js?v=20261021_2"></script>
 </body>
 </html>

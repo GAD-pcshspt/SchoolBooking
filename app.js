@@ -123,7 +123,13 @@ const DEFAULT_FORM_OPTIONS = {
   ],
   // การปิดสถานที่: { [ชื่อห้อง]: { mode: 'manual' | 'range', start, end, reason } }
   // ห้องเรียนใช้ชื่อแบบเดียวกับข้อมูลการจอง เช่น "ห้อง 101"
-  roomClosures: {}
+  roomClosures: {},
+  // ข้อมูลห้อง: { [ชื่อห้อง]: { capacity, location, contact, description, rules, equipment: [], extra: [{label, value}] } }
+  roomDetails: {},
+  // ประกาศ: [{ id, title, detail, type: 'info'|'warning'|'closure', room, start, end, pinned }]
+  announcements: [],
+  // เวลาทำการ ใช้คำนวณช่วงว่างในตารางเวลาและการค้นหาห้องว่าง
+  bookingHours: { start: '06:00', end: '21:00' }
 };
 
 function getFormOptions() {
@@ -140,6 +146,9 @@ function getFormOptions() {
       roomLayouts: Array.isArray(parsed.roomLayouts) ? parsed.roomLayouts : DEFAULT_FORM_OPTIONS.roomLayouts,
       userGroups: Array.isArray(parsed.userGroups) ? parsed.userGroups : DEFAULT_FORM_OPTIONS.userGroups,
       roomClosures: (parsed.roomClosures && typeof parsed.roomClosures === 'object' && !Array.isArray(parsed.roomClosures)) ? parsed.roomClosures : {},
+      roomDetails: (parsed.roomDetails && typeof parsed.roomDetails === 'object' && !Array.isArray(parsed.roomDetails)) ? parsed.roomDetails : {},
+      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
+      bookingHours: (parsed.bookingHours && parsed.bookingHours.start && parsed.bookingHours.end) ? parsed.bookingHours : { ...DEFAULT_FORM_OPTIONS.bookingHours },
       _updatedAt: Number(parsed._updatedAt) || 0,
     };
   } catch {
@@ -432,9 +441,9 @@ function closureChipInfo(roomKey, options) {
     return { cls: 'is-closed', badge: `<span class="opt-chip-status">🔒 ปิดอยู่${reason}</span>`, lockIcon: '🔒', lockTitle: 'แก้ไข / เปิดให้จอง' };
   }
   if (c.start <= today) {
-    return { cls: 'is-closed', badge: `<span class="opt-chip-status">🔒 ปิดถึง ${formatDateThai(c.end)}${reason}</span>`, lockIcon: '🔒', lockTitle: 'แก้ไข / เปิดให้จอง' };
+    return { cls: 'is-closed', badge: `<span class="opt-chip-status">🔒 ปิดถึง ${fmtDay(c.end)}${reason}</span>`, lockIcon: '🔒', lockTitle: 'แก้ไข / เปิดให้จอง' };
   }
-  return { cls: 'is-scheduled', badge: `<span class="opt-chip-status">🗓️ จะปิด ${closurePeriodText(c)}${reason}</span>`, lockIcon: '🗓️', lockTitle: 'แก้ไข / ยกเลิกการปิด' };
+  return { cls: 'is-scheduled', badge: `<span class="opt-chip-status">🗓️ จะปิด ${fmtRange(c.start, c.end)}${reason}</span>`, lockIcon: '🗓️', lockTitle: 'แก้ไข / ยกเลิกการปิด' };
 }
 
 function resetFormOptionsToDefault() {
@@ -569,6 +578,9 @@ function refreshAllFormOptions() {
       </span>
     `).join('');
   }
+
+  // 9. แถบประกาศ / หน้าข้อมูลสถานที่ / ค้นหาห้องว่าง (venues.js)
+  if (typeof refreshVenueViews === 'function') refreshVenueViews();
 }
 
 function fillPreset(fieldId, val) {
@@ -587,7 +599,7 @@ let optActiveClassroomGrade = '__m1';
 
 function switchOptSubTab(subTab) {
   optActiveSubTab = subTab;
-  ['rooms', 'positions', 'departments', 'layouts'].forEach(t => {
+  ['rooms', 'announcements', 'positions', 'departments', 'layouts'].forEach(t => {
     const tabBtn = document.getElementById(`optTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
     const panel = document.getElementById(`optPanel${t.charAt(0).toUpperCase() + t.slice(1)}`);
     if (tabBtn) tabBtn.classList.toggle('active', t === subTab);
@@ -598,6 +610,10 @@ function switchOptSubTab(subTab) {
 
 function renderAdminOptionsManager() {
   const options = getFormOptions();
+
+  // Subpanel: Announcements & booking hours (venues.js)
+  if (typeof renderAdminAnnouncements === 'function') renderAdminAnnouncements();
+  if (typeof renderBookingHoursSetting === 'function') renderBookingHoursSetting();
 
   // Subpanel: Positions
   const posCount = document.getElementById('optPositionCount');
@@ -727,6 +743,7 @@ function renderAdminOptionsManager() {
                   <span class="opt-chip ${ci.cls}">
                     <span>${escapeHtml(r)}</span>
                     ${ci.badge}
+                    <button type="button" class="opt-chip-lock" onclick="openRoomDetailEditorByIndex(${catIdx}, ${rIdx})" title="แก้ไขข้อมูลห้อง (ความจุ ที่ตั้ง อุปกรณ์ ฯลฯ)">✏️</button>
                     <button type="button" class="opt-chip-lock" onclick="openRoomClosureModal(${catIdx}, ${rIdx})" title="${ci.lockTitle}">${ci.lockIcon}</button>
                     <button type="button" class="opt-chip-delete" onclick="deleteRoom(${catIdx}, ${rIdx})" title="ลบสถานที่นี้">✕</button>
                   </span>
@@ -843,6 +860,7 @@ function deleteRoom(catIdx, roomIdx) {
   if (!options.venueCategories[catIdx]) return;
   const removed = options.venueCategories[catIdx].rooms.splice(roomIdx, 1);
   delete options.roomClosures[removed[0]];
+  delete options.roomDetails[removed[0]];
   options._updatedAt = Date.now();
   saveFormOptions(options);
   renderAdminOptionsManager();
@@ -873,7 +891,10 @@ function deleteCategory(catIdx) {
   if (!options.venueCategories[catIdx]) return;
   const label = options.venueCategories[catIdx].label;
   if (!confirm(`ต้องการลบหมวดหมู่ "${label}" และสถานที่ทั้งหมดในหมวดหมู่นี้ใช่หรือไม่?`)) return;
-  (options.venueCategories[catIdx].rooms || []).forEach(r => delete options.roomClosures[r]);
+  (options.venueCategories[catIdx].rooms || []).forEach(r => {
+    delete options.roomClosures[r];
+    delete options.roomDetails[r];
+  });
   options.venueCategories.splice(catIdx, 1);
   options._updatedAt = Date.now();
   saveFormOptions(options);
@@ -1012,6 +1033,7 @@ let state = {
   calMonth:        new Date().getMonth(),
   calViewMode:     'scroll',
   calListSelectedDate: '',
+  calTimelineDate: '',
   optSubTab:       'rooms',
   adminTab:        'approved',
   adminSection:    'manage',
@@ -1584,6 +1606,9 @@ function showPage(page) {
   const map = {
     booking:  { page: 'pageBooking',  nav: 'navBooking'  },
     calendar: { page: 'pageCalendar', nav: 'navCalendar' },
+    venues:   { page: 'pageVenues',   nav: 'navVenues'   },
+    venueDetail: { page: 'pageVenueDetail', nav: 'navVenues' },
+    search:   { page: 'pageSearch',   nav: 'navSearch'   },
     admin:    { page: 'pageAdmin',    nav: 'navAdmin'    },
     report:   { page: 'pageAdmin',    nav: 'navReport'   },
   };
@@ -1601,6 +1626,18 @@ function showPage(page) {
 
   if (page === 'calendar') {
     renderCalendar();
+    fetchGoogleSheetsBookings(true);
+  }
+  if (page === 'venues') {
+    renderVenuesPage();
+    fetchGoogleSheetsBookings(true);
+  }
+  if (page === 'venueDetail') {
+    renderVenueDetail();
+    fetchGoogleSheetsBookings(true);
+  }
+  if (page === 'search') {
+    renderSearchPage();
     fetchGoogleSheetsBookings(true);
   }
   if (page === 'admin') {
@@ -2159,6 +2196,15 @@ async function submitBooking(event) {
   saveBookings(bookings);
   state.lastBookingId = newBooking.id;
 
+  // เก็บไว้สำหรับปุ่ม "จองแบบครั้งก่อน" (เฉพาะเครื่องนี้)
+  if (typeof saveLastBookingTemplate === 'function') {
+    saveLastBookingTemplate({
+      fullName, position: finalPosition, department, roomRaw,
+      classrooms: roomSelection.rooms, roomString: roomSelection.roomString,
+      purpose, studentCount, grade, startTime, endTime, roomLayout,
+    });
+  }
+
   // Sync to Google Sheets
   if (checkIsGoogleSheetsConfigured()) {
     if (submitBtn) {
@@ -2221,17 +2267,24 @@ function printCurrentBooking() {
 // CALENDAR
 // ============================================================
 function setCalViewMode(mode) {
-  if (mode !== 'list') mode = 'scroll';
+  if (mode !== 'list' && mode !== 'timeline') mode = 'scroll';
   state.calViewMode = mode;
   const btnScroll = document.getElementById('btnViewScroll');
   const btnList   = document.getElementById('btnViewList');
+  const btnTimeline = document.getElementById('btnViewTimeline');
   const gridWrap  = document.getElementById('calendarScrollWrap');
   const listView  = document.getElementById('calendarListView');
+  const timelineView = document.getElementById('calendarTimelineView');
+  const calNav    = document.querySelector('.calendar-nav');
   const legend    = document.querySelector('.calendar-legend');
   const hint      = document.getElementById('calMobileHint') || document.querySelector('.cal-mobile-hint');
 
   if (btnScroll) btnScroll.classList.toggle('active', mode === 'scroll');
   if (btnList) btnList.classList.toggle('active', mode === 'list');
+  if (btnTimeline) btnTimeline.classList.toggle('active', mode === 'timeline');
+  if (timelineView) timelineView.classList.toggle('hidden', mode !== 'timeline');
+  // ตารางรายวันมีปุ่มเลื่อนวันของตัวเอง จึงซ่อนปุ่มเลื่อนเดือน
+  if (calNav) calNav.classList.toggle('hidden', mode === 'timeline');
 
   if (mode === 'list') {
     if (gridWrap) gridWrap.classList.add('hidden');
@@ -2239,6 +2292,12 @@ function setCalViewMode(mode) {
     if (legend) legend.classList.add('hidden');
     if (hint) hint.classList.add('hidden');
     renderCalendarList();
+  } else if (mode === 'timeline') {
+    if (gridWrap) gridWrap.classList.add('hidden');
+    if (listView) listView.classList.add('hidden');
+    if (legend) legend.classList.add('hidden');
+    if (hint) hint.classList.add('hidden');
+    renderCalendarTimeline();
   } else {
     if (gridWrap) {
       gridWrap.classList.remove('hidden');
@@ -2276,9 +2335,11 @@ function renderCalendar() {
   const btnFit    = document.getElementById('btnViewFit');
   const btnScroll = document.getElementById('btnViewScroll');
   const btnList   = document.getElementById('btnViewList');
+  const btnTimeline = document.getElementById('btnViewTimeline');
   if (btnFit) btnFit.classList.toggle('active', state.calViewMode === 'fit');
   if (btnScroll) btnScroll.classList.toggle('active', state.calViewMode === 'scroll');
   if (btnList) btnList.classList.toggle('active', state.calViewMode === 'list');
+  if (btnTimeline) btnTimeline.classList.toggle('active', state.calViewMode === 'timeline');
 
   const gridWrap = document.getElementById('calendarScrollWrap');
   if (gridWrap) {
@@ -2288,14 +2349,19 @@ function renderCalendar() {
 
   const hint = document.getElementById('calMobileHint') || document.querySelector('.cal-mobile-hint');
   if (hint) {
-    hint.classList.toggle('hidden', state.calViewMode === 'fit' || state.calViewMode === 'list');
+    hint.classList.toggle('hidden', state.calViewMode === 'fit' || state.calViewMode === 'list' || state.calViewMode === 'timeline');
   }
 
   if (state.calViewMode === 'list') {
     renderCalendarList();
+  } else if (state.calViewMode === 'timeline') {
+    renderCalendarTimeline();
   } else {
     renderCalendarGrid();
   }
+
+  // ข้อมูลการจองเปลี่ยน → อัปเดตหน้าข้อมูลสถานที่ / ค้นหาห้องว่าง (venues.js)
+  if (typeof refreshVenueViews === 'function') refreshVenueViews();
 }
 
 function renderCalendarGrid() {
@@ -2577,7 +2643,10 @@ function createDayCell(date, bookings, today, otherMonth) {
     ((dow === 0 || dow === 6) ? ' weekend' : '') +
     (isToday ? ' today' : '');
 
-  if (!otherMonth) cell.onclick = () => showDayDetail(date, dayBookings);
+  if (!otherMonth) {
+    cell.onclick = () => openTimelineForDate(dayStr);
+    cell.title = 'แตะเพื่อดูตารางรายวันแยกห้องของวันนี้';
+  }
 
   const numEl = document.createElement('div');
   numEl.className = 'cal-day-num';
@@ -2632,8 +2701,8 @@ function createDayCell(date, bookings, today, otherMonth) {
         const more = document.createElement('div');
         more.className = 'cal-more';
         more.textContent = `+${dayBookings.length - maxDisplayChips} รายการ (แตะดูทั้งหมด)`;
-        more.title = 'แตะเพื่อดูรายละเอียดการจองทั้งหมดของวันนี้';
-        more.onclick = (e) => { e.stopPropagation(); showDayDetail(date, dayBookings); };
+        more.title = 'แตะเพื่อดูตารางรายวันแยกห้องของวันนี้';
+        more.onclick = (e) => { e.stopPropagation(); openTimelineForDate(dayStr); };
         booksEl.appendChild(more);
       }
       cell.appendChild(booksEl);
