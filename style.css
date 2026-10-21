@@ -4079,3 +4079,63 @@ input, select, textarea { font-family: var(--font-body); }
   #dayEditModal .modal-footer button { flex: 1; justify-content: center; white-space: nowrap; }
   #dayEditModal .modal-footer .de-reset-btn { flex: 1 1 100%; margin-right: 0; }
 }
+/* ============================================================
+   ปรับมุมมองมือถือ / iPad (ต้องอยู่ท้ายไฟล์เพื่อทับกฎเดิม)
+   ============================================================ */
+.edit-datetime-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* iPad (ทั้งแนวตั้งและแนวนอน) ลงมา: เมนูหลักและแท็บตัดบรรทัด เห็นครบทุกปุ่มโดยไม่ต้องเลื่อน */
+@media (max-width: 1180px) {
+  .main-nav {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    justify-content: center;
+    padding: 4px 8px 0;
+    gap: 2px 4px;
+  }
+  .nav-link { flex-shrink: 1; }
+  .btn-nav-refresh { margin: 4px 0 6px auto; }
+  .admin-section-tabs { flex-wrap: wrap; overflow-x: visible; row-gap: 0; }
+  .opt-sub-tabs { flex-wrap: wrap; overflow-x: visible; row-gap: 6px; }
+}
+
+/* มือถือ: เมนูหลักเป็นตาราง 3 ช่อง ปุ่มเท่ากัน กดง่าย */
+@media (max-width: 480px) {
+  .main-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 6px 8px 8px;
+  }
+  .nav-link {
+    padding: 8px 4px;
+    font-size: 0.76rem;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.3;
+    border-radius: var(--radius-sm);
+    border-bottom-width: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-link.active { background: rgba(249, 115, 22, 0.28); }
+  .btn-nav-refresh { margin: 0; justify-content: center; border-radius: var(--radius-sm); padding: 8px 4px; }
+  .admin-section-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: none; gap: 6px; }
+  .section-tab {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    background: var(--white);
+    margin-bottom: 0;
+    padding: 9px 6px;
+    font-size: 0.8rem;
+    white-space: normal;
+    text-align: center;
+  }
+  .section-tab.active { border-color: var(--orange-500); background: var(--orange-50); }
+  .opt-sub-tab { font-size: 0.78rem; padding: 7px 12px; }
+  .edit-datetime-row { grid-template-columns: 1fr 1fr; }
+  .edit-datetime-row > .form-group:first-child { grid-column: 1 / -1; }
+  .cx-list-head { flex-direction: column; align-items: flex-start; gap: 2px; }
+}

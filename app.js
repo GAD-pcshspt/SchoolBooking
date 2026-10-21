@@ -3079,7 +3079,7 @@ function editBooking(id) {
     </div>
     <div class="form-group"><label class="form-label required">ห้องที่จอง</label><input id="e_room" class="form-input" value="${escapeHtml(b.room)}" /></div>
     <div class="form-group"><label class="form-label required">วัตถุประสงค์</label><textarea id="e_purpose" class="form-textarea" rows="2">${escapeHtml(b.purpose)}</textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div class="edit-datetime-row">
       <div class="form-group"><label class="form-label required">วันที่</label><input type="date" id="e_date" class="form-input" value="${b.bookingDate}" /></div>
       <div class="form-group"><label class="form-label required">เวลาเริ่ม</label><input type="time" id="e_start" class="form-input" value="${b.startTime}" /></div>
       <div class="form-group"><label class="form-label required">เวลาสิ้นสุด</label><input type="time" id="e_end" class="form-input" value="${b.endTime}" /></div>
