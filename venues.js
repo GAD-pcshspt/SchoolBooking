@@ -1259,6 +1259,8 @@ function selectRoomInBookingForm(roomKey, options) {
 function prefillBooking(roomKey, date, startTime, endTime) {
   const options = getFormOptions();
   showPage('booking');
+  // กรอกจากตาราง/ผลค้นหาเป็นการจองวันเดียวเสมอ
+  if (date && typeof isMultiDayMode === 'function' && isMultiDayMode()) resetMultiDay();
   if (date) {
     document.getElementById('bookingDate').value = date;
     refreshAllFormOptions();
@@ -1368,6 +1370,7 @@ function applyLastBooking() {
 function refreshVenueViews() {
   renderAnnouncementBar();
   renderLastBookingBar();
+  if (typeof renderMultiDayPanel === 'function') renderMultiDayPanel();
   if (isPageVisible('pageVenues')) renderVenuesPage();
   if (isPageVisible('pageVenueDetail')) renderVenueDetail();
   if (isPageVisible('pageSearch')) {

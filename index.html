@@ -12,7 +12,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20261021_2" />
+  <link rel="stylesheet" href="style.css?v=20261021_3" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 
@@ -74,6 +74,16 @@
       </div>
 
       <div class="form-container">
+        <!-- โหมดการจอง: วันเดียว / หลายวัน (multiday.js) -->
+        <div class="booking-mode-toggle" role="tablist">
+          <button type="button" class="bm-btn active" id="bmSingle" onclick="setBookingMode('single')">📅 จองวันเดียว</button>
+          <button type="button" class="bm-btn" id="bmMulti" onclick="setBookingMode('multi')">📆 จองหลายวัน</button>
+        </div>
+        <p class="bm-hint hidden" id="bmHint">
+          💡 กรอกข้อมูลด้านล่างเป็น <strong>"ต้นแบบ"</strong> แล้วเลือกวันจากปฏิทินในหัวข้อวันที่และเวลา
+          ทุกวันจะใช้ข้อมูลต้นแบบ และกด ✏️ เพื่อแก้เฉพาะวันที่ต่างออกไปได้
+        </p>
+
         <!-- จองแบบครั้งก่อน (แสดงเมื่อเคยจองจากเครื่องนี้) -->
         <div class="last-booking-bar hidden" id="lastBookingBar">
           <div class="last-booking-text">
@@ -204,6 +214,8 @@
                 </div>
               </div>
               <span class="field-error" id="errDateTime"></span>
+              <!-- โหมดจองหลายวัน: ปฏิทินเลือกวัน + รายการวัน (rendered by multiday.js) -->
+              <div class="multi-day-panel hidden" id="multiDayPanel"></div>
             </div>
           </div>
 
@@ -231,7 +243,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              ยืนยันการจอง
+              <span id="btnSubmitLabel">ยืนยันการจอง</span>
             </button>
           </div>
         </form>
@@ -1122,6 +1134,69 @@
     </div>
   </div>
 
+  <!-- Multi-day: Edit One Day Modal -->
+  <div class="modal-overlay hidden" id="dayEditModal">
+    <div class="modal-box large-modal">
+      <div class="modal-header">
+        <h3>✏️ แก้เฉพาะวัน <span id="deTitle"></span></h3>
+        <button class="btn-close-modal" onclick="closeDayEdit()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="de-status" id="deStatus"></div>
+        <p class="de-hint">ค่าเริ่มต้นมาจากข้อมูลต้นแบบ แก้เฉพาะช่องที่ต่างออกไปในวันนี้</p>
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="deStart" class="form-label required">เวลาเริ่มต้น</label>
+            <input type="time" id="deStart" class="form-input" oninput="updateDayEditStatus()" />
+          </div>
+          <div class="form-group">
+            <label for="deEnd" class="form-label required">เวลาสิ้นสุด</label>
+            <input type="time" id="deEnd" class="form-input" oninput="updateDayEditStatus()" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="deRoom" class="form-label required">ห้องที่จอง</label>
+          <select id="deRoom" class="form-select" onchange="onDayEditRoomChange()"></select>
+          <div class="de-classroom-picker hidden" id="deClassroomPicker"></div>
+        </div>
+        <div class="form-group">
+          <label for="dePurpose" class="form-label required">วัตถุประสงค์</label>
+          <textarea id="dePurpose" class="form-textarea" rows="2"></textarea>
+        </div>
+        <div class="form-row two-col">
+          <div class="form-group">
+            <label for="deCount" class="form-label required">จำนวนผู้ใช้ห้อง (คน)</label>
+            <input type="number" id="deCount" class="form-input" min="1" />
+          </div>
+          <div class="form-group">
+            <label for="deGrade" class="form-label required">ระดับชั้น / กลุ่มผู้ใช้</label>
+            <input type="text" id="deGrade" class="form-input" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="deLayout" class="form-label required">รูปแบบการจัดห้อง</label>
+          <input type="text" id="deLayout" class="form-input" />
+        </div>
+        <div class="de-copy" id="deCopySection">
+          <div class="de-copy-head">
+            <span class="de-copy-title">⧉ คัดลอกข้อมูลของวันนี้ไปวันอื่นด้วย</span>
+            <span class="de-copy-actions">
+              <button type="button" onclick="selectAllCopyDays(true)">เลือกทั้งหมด</button>
+              <button type="button" onclick="selectAllCopyDays(false)">ล้าง</button>
+            </span>
+          </div>
+          <div class="de-copy-days" id="deCopyDays"></div>
+        </div>
+        <span class="field-error" id="errDayEdit"></span>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary de-reset-btn" onclick="resetDayEdit()" title="ล้างการแก้ไข ให้วันนี้ใช้ข้อมูลต้นแบบ">↺ คืนค่าตามต้นแบบ</button>
+        <button class="btn-secondary" onclick="closeDayEdit()">ยกเลิก</button>
+        <button class="btn-primary" onclick="saveDayEdit()">💾 บันทึก</button>
+      </div>
+    </div>
+  </div>
+
   <!-- All Announcements Modal -->
   <div class="modal-overlay hidden" id="announcementsModal">
     <div class="modal-box large-modal">
@@ -1253,7 +1328,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20261010_9"></script>
-  <script src="app.js?v=20261021_2"></script>
-  <script src="venues.js?v=20261021_2"></script>
+  <script src="app.js?v=20261021_3"></script>
+  <script src="venues.js?v=20261021_3"></script>
+  <script src="multiday.js?v=20261021_3"></script>
 </body>
 </html>

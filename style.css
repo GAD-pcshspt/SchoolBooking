@@ -3720,3 +3720,211 @@ input, select, textarea { font-family: var(--font-body); }
   .last-booking-bar { padding: 10px 12px; }
   .btn-last-booking { width: 100%; }
 }
+
+/* ============================================================
+   จองหลายวัน (multiday.js)
+   ============================================================ */
+.booking-mode-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.bm-btn {
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.bm-btn:hover { color: var(--navy-800); }
+.bm-btn.active { background: var(--white); color: var(--orange-700); box-shadow: var(--shadow-sm); }
+.bm-hint {
+  font-size: 0.84rem;
+  color: var(--navy-700);
+  background: var(--navy-50);
+  border: 1px solid var(--navy-100);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin: -4px 0 16px;
+  line-height: 1.6;
+}
+.datetime-row.md-times-only { grid-template-columns: 1fr 1fr; }
+
+.multi-day-panel { margin-top: 12px; }
+.md-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+.md-cal {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+}
+.md-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.md-cal-head .btn-cal-nav { width: 32px; height: 32px; }
+.md-cal-head .btn-cal-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+.md-cal-title { font-weight: 800; color: var(--navy-800); }
+.md-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.md-cal-dow { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--gray-500); padding: 2px 0 4px; }
+.md-cal-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+.md-cal-cell.empty { background: transparent; cursor: default; }
+.md-cal-cell:not(.empty):not(.past):hover { border-color: var(--orange-400); background: var(--orange-50); }
+.md-cal-cell.today { border-color: var(--navy-300); }
+.md-cal-cell.past { color: var(--gray-300); background: transparent; cursor: not-allowed; }
+.md-cal-cell.closed { background: repeating-linear-gradient(135deg, var(--gray-100) 0 5px, var(--gray-200) 5px 10px); color: var(--gray-500); }
+.md-cal-cell.selected {
+  background: linear-gradient(135deg, var(--orange-500), var(--orange-600));
+  color: var(--white);
+  border-color: var(--orange-600);
+  box-shadow: 0 2px 6px rgba(234,88,12,0.35);
+}
+.md-mark { position: absolute; top: 1px; right: 2px; font-size: 0.55rem; font-style: normal; }
+.md-dot { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--orange-500); }
+.md-cal-cell.selected .md-dot { background: var(--white); }
+.md-cal-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 0.72rem; color: var(--gray-500); }
+.md-cal-legend span { display: inline-flex; align-items: center; gap: 5px; position: relative; }
+.md-cal-legend .lg-sel { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--orange-500); }
+.md-cal-legend .md-dot { position: static; transform: none; }
+
+.md-list { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.md-summary { font-size: 0.88rem; color: var(--gray-700); }
+.md-summary .ok { color: #15803d; font-weight: 700; }
+.md-summary .bad { color: var(--danger); font-weight: 700; }
+.md-empty {
+  border: 1.5px dashed var(--gray-300);
+  border-radius: var(--radius-md);
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+.md-day {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--success);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.md-day.bad { border-left-color: var(--danger); background: #fef2f2; }
+.md-day-main { min-width: 0; flex: 1; }
+.md-day-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 0.87rem; }
+.md-day-date { color: var(--navy-800); }
+.md-day-time { color: var(--orange-700); font-weight: 700; }
+.md-day-room { color: var(--gray-700); }
+.md-day-time.diff, .md-day-room.diff { background: #fef3c7; border-radius: 4px; padding: 0 5px; }
+.md-badge { font-size: 0.7rem; font-weight: 700; background: #fef3c7; color: #92400e; border-radius: var(--radius-full); padding: 1px 8px; }
+.md-day-sub { font-size: 0.8rem; color: var(--gray-600); margin-top: 3px; }
+.md-day-warn { font-size: 0.8rem; color: var(--danger); font-weight: 600; margin-top: 4px; }
+.md-day-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.md-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.md-act:hover { border-color: var(--orange-300); background: var(--orange-50); }
+.md-act.del:hover { border-color: #fecaca; background: #fee2e2; color: var(--danger); }
+.md-note { font-size: 0.8rem; color: var(--danger); font-weight: 600; }
+
+/* หน้าต่างแก้เฉพาะวัน */
+.de-status { font-weight: 700; font-size: 0.88rem; border-radius: var(--radius-md); padding: 8px 12px; margin-bottom: 8px; }
+.de-status.ok { background: #dcfce7; color: #166534; }
+.de-status.bad { background: #fee2e2; color: #991b1b; }
+.de-hint { font-size: 0.8rem; color: var(--gray-500); margin-bottom: 12px; }
+.de-classroom-picker { margin-top: 10px; }
+.de-cr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+.de-cr-selected { font-size: 0.8rem; color: var(--orange-800); font-weight: 600; margin-top: 6px; }
+.de-copy {
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-top: 6px;
+  transition: var(--transition);
+}
+.de-copy.highlight { border: 2px solid var(--orange-400); background: var(--orange-50); }
+.de-copy-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.de-copy-title { font-weight: 700; font-size: 0.87rem; color: var(--gray-700); }
+.de-copy-actions button {
+  background: none;
+  border: none;
+  color: var(--navy-600);
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.de-copy-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.de-copy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  background: var(--white);
+}
+.de-copy-chip:has(input:checked) { border-color: var(--orange-500); background: var(--orange-50); color: var(--orange-800); font-weight: 700; }
+.de-copy-chip input { accent-color: var(--orange-500); }
+.de-reset-btn { margin-right: auto; }
+.success-days {
+  text-align: left;
+  font-size: 0.85rem;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  margin-top: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+
+@media (max-width: 900px) {
+  .md-layout { grid-template-columns: 1fr; }
+  .md-cal { max-width: 420px; width: 100%; margin: 0 auto; }
+}
+@media (max-width: 480px) {
+  .bm-btn { font-size: 0.85rem; padding: 9px 6px; }
+  .md-day { flex-direction: column; gap: 8px; }
+  .md-day-actions { width: 100%; }
+  .md-act { flex: 1; justify-content: center; padding: 7px 6px; }
+  .md-act.del { flex: 0 0 44px; }
+  #dayEditModal .modal-footer { flex-wrap: wrap; }
+  #dayEditModal .modal-footer button { flex: 1; justify-content: center; white-space: nowrap; }
+  #dayEditModal .modal-footer .de-reset-btn { flex: 1 1 100%; margin-right: 0; }
+}

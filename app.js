@@ -2059,8 +2059,9 @@ async function submitBooking(event) {
     if (!firstInvalid) firstInvalid = 'grade';
   }
 
-  // 8. Date & Time
-  if (!bookingDate) {
+  // 8. Date & Time (โหมดจองหลายวันเลือกวันจากปฏิทินแทนช่องวันที่)
+  const isMultiDay = typeof isMultiDayMode === 'function' && isMultiDayMode();
+  if (!bookingDate && !isMultiDay) {
     setError('errDateTime', 'กรุณาเลือกวันที่ใช้สถานที่');
     setInputError('bookingDate');
     valid = false;
@@ -2101,6 +2102,12 @@ async function submitBooking(event) {
     setError('errDateTime', '⚠️ เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น');
     setInputError('endTime');
     showToast('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น', 'error');
+    return;
+  }
+
+  if (isMultiDay) {
+    const isPosOther = (position === 'อื่น ๆ' || position === 'อื่นๆ' || position.startsWith('อื่น'));
+    await submitMultiDayBooking({ fullName, position: isPosOther ? posOther : position, department });
     return;
   }
 
@@ -2195,6 +2202,7 @@ async function submitBooking(event) {
   bookings.push(newBooking);
   saveBookings(bookings);
   state.lastBookingId = newBooking.id;
+  state.lastBookingIds = null;
 
   // เก็บไว้สำหรับปุ่ม "จองแบบครั้งก่อน" (เฉพาะเครื่องนี้)
   if (typeof saveLastBookingTemplate === 'function') {
@@ -2250,6 +2258,7 @@ function clearForm() {
   document.getElementById('classroomSelector').classList.add('hidden');
   selectedClassrooms.clear();
   renderSelectedChips();
+  if (typeof resetMultiDay === 'function') resetMultiDay();
   refreshAllFormOptions();
   clearErrors();
 }
@@ -2257,6 +2266,12 @@ function closeSuccess()  { document.getElementById('successModal').classList.add
 function closeConflict() { document.getElementById('conflictModal').classList.add('hidden'); }
 
 function printCurrentBooking() {
+  // จองหลายวัน → พิมพ์ใบสรุปรวมใบเดียว
+  if (Array.isArray(state.lastBookingIds) && state.lastBookingIds.length > 1 && typeof printMultiDaySummary === 'function') {
+    printMultiDaySummary(state.lastBookingIds);
+    closeSuccess();
+    return;
+  }
   if (!state.lastBookingId) return;
   const b = getBookingById(state.lastBookingId);
   if (b) openPrintPreview(b);
