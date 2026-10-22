@@ -3537,43 +3537,37 @@ function buildReportHTML(bookings, periodLabel) {
   const approvedCount  = bookings.filter(b => b.status === 'approved').length;
   const cancelledCount = bookings.filter(b => b.status === 'cancelled').length;
 
-  // Smart Table calculation (คำนวณขนาดอักษรและระยะห่างอัจฉริยะให้อยู่ในบรรทัดเดียวเสมอ)
-  const maxNameLen = Math.max(...bookings.map(b => (b.fullName || '').length), 0);
-  const maxDeptLen = Math.max(...bookings.map(b => (b.department || '').length), 0);
-  const maxRoomLen = Math.max(...bookings.map(b => (b.room || '').length), 0);
-  const rowCount   = bookings.length;
-
-  let fontSizePt = 7.6;
-  let cellPadding = '5px 4px';
-  if (rowCount > 20 || maxNameLen > 24 || maxDeptLen > 22 || maxRoomLen > 20) {
-    fontSizePt = 6.4;
-    cellPadding = '3px 2px';
-  } else if (rowCount > 12 || maxNameLen > 18 || maxDeptLen > 18 || maxRoomLen > 16) {
-    fontSizePt = 7.0;
-    cellPadding = '4px 3px';
-  }
+  // ข้อความยาว (วัตถุประสงค์ กลุ่มผู้ใช้ ห้อง) ตัดขึ้นบรรทัดใหม่ แถวสูงขึ้นได้ จึงลดขนาดอักษรเฉพาะเมื่อมีรายการมาก
+  const rowCount = bookings.length;
+  const fontSizePt = rowCount > 30 ? 7 : 7.6;
+  const cellPadding = rowCount > 30 ? '3px 3px' : '4px 4px';
 
   // 1. ตารางรายละเอียดการจองทั้งหมด (ตารางแรก)
-  const sortedBookings = [...bookings].sort((a, b) => 
+  // ลำดับคอลัมน์ตามหน้าจอง: ชื่อ → ห้อง → วัตถุประสงค์ → จำนวนผู้ใช้ → กลุ่มผู้ใช้ → วันที่ → เวลา (+ สถานะท้ายตาราง)
+  const sortedBookings = [...bookings].sort((a, b) =>
     new Date(a.bookingDate) - new Date(b.bookingDate) || (a.startTime || '').localeCompare(b.startTime || '')
   );
 
+  const td = (align, extra = '') =>
+    `style="text-align:${align};vertical-align:middle;border:1px solid #cbd5e1;padding:${cellPadding};font-size:${fontSizePt}pt;line-height:1.35;${extra}"`;
+  const wrap = 'white-space:normal;word-break:break-word;overflow-wrap:anywhere;';
   const detailRows = sortedBookings.length ? sortedBookings.map((b, i) => `
-    <tr style="height:22px;">
-      <td style="text-align:center;font-weight:700;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;font-size:${fontSizePt}pt;">${i + 1}</td>
-      <td style="text-align:left;border:1px solid #cbd5e1;padding:${cellPadding};padding-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:${fontSizePt}pt;" title="${escapeHtml(b.fullName)}">${escapeHtml(b.fullName)}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:${fontSizePt}pt;">${escapeHtml(b.position || '-')}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:${fontSizePt}pt;" title="${escapeHtml(b.department || '-')}">${escapeHtml(b.department || '-')}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:${fontSizePt}pt;" title="${escapeHtml(b.room)}">${escapeHtml(b.room)}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;font-size:${fontSizePt}pt;">${formatDateThai(b.bookingDate)}</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;font-size:${fontSizePt}pt;">${b.startTime}–${b.endTime} น.</td>
-      <td style="text-align:center;border:1px solid #cbd5e1;padding:${cellPadding};white-space:nowrap;">
-        <span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:${Math.max(6.2, fontSizePt - 0.4)}pt;font-weight:700;background:${b.status === 'approved' ? '#dcfce7;color:#166534;' : '#fee2e2;color:#991b1b;'}">
+    <tr style="page-break-inside:avoid;break-inside:avoid;${b.status === 'cancelled' ? 'color:#64748b;' : ''}${i % 2 ? 'background:#f8fafc;' : ''}">
+      <td ${td('center', 'font-weight:700;white-space:nowrap;')}>${i + 1}</td>
+      <td ${td('left', wrap)}>${escapeHtml(b.fullName)}</td>
+      <td ${td('left', wrap)}>${escapeHtml(b.room)}</td>
+      <td ${td('left', wrap)}>${escapeHtml(b.purpose || '–')}</td>
+      <td ${td('center', 'white-space:nowrap;')}>${escapeHtml(b.studentCount || '–')}</td>
+      <td ${td('left', wrap)}>${escapeHtml(b.grade || '–')}</td>
+      <td ${td('center', 'white-space:nowrap;')}>${formatDateShortThai(b.bookingDate)}</td>
+      <td ${td('center', 'white-space:nowrap;')}>${b.startTime}–${b.endTime}</td>
+      <td ${td('center', 'white-space:nowrap;')}>
+        <span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:${fontSizePt - 0.6}pt;font-weight:700;background:${b.status === 'approved' ? '#dcfce7;color:#166534;' : '#fee2e2;color:#991b1b;'}">
           ${statusLabel(b.status)}
         </span>
       </td>
     </tr>
-  `).join('') : `<tr><td colspan="8" style="text-align:center;padding:14px;color:#6b7280;border:1px solid #cbd5e1;">ไม่มีข้อมูลการจองในช่วงเวลานี้</td></tr>`;
+  `).join('') : `<tr><td colspan="9" style="text-align:center;padding:14px;color:#6b7280;border:1px solid #cbd5e1;">ไม่มีข้อมูลการจองในช่วงเวลานี้</td></tr>`;
 
   // 2. ตารางสรุปการจองแยกตามสถานที่ (ตารางที่สอง)
   const allRooms = [...new Set(bookings.flatMap(b => {
@@ -3632,10 +3626,11 @@ function buildReportHTML(bookings, periodLabel) {
   }).join('') : '<div style="font-size:8pt;color:#64748b;">ไม่มีข้อมูลการจอง</div>';
 
   return `
-    <div style="font-family:'Sarabun','Noto Sans Thai',sans-serif;color:#0f172a;background:#ffffff;box-sizing:border-box;width:100%;max-width:760px;margin:0 auto;padding:2px 0;">
-      
+    <div style="font-family:'Sarabun','Noto Sans Thai',sans-serif;color:#0f172a;box-sizing:border-box;width:100%;margin:0 auto;">
+
       <!-- ================= หน้าที่ 1 : ตารางรายละเอียดการจองทั้งหมด (ตารางแรก) ================= -->
-      <div>
+      <section class="report-page">
+        <div class="report-page-label">หน้า 1 · ตารางที่ 1 รายละเอียดการจองทั้งหมด</div>
         <div style="text-align:center;border-bottom:2px solid #0f2444;padding-bottom:6px;margin-bottom:10px;">
           <h1 style="font-size:13.5pt;font-weight:800;color:#0f2444;margin:0 0 2px;">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</h1>
           <p style="font-size:9pt;color:#475569;margin:0 0 4px;">ฝ่ายบริหารงานทั่วไป — ระบบจองใช้สถานที่</p>
@@ -3657,29 +3652,32 @@ function buildReportHTML(bookings, periodLabel) {
         </div>
 
         <table style="width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:fixed;font-size:${fontSizePt}pt;">
-          <thead>
+          <colgroup>
+            <col style="width:5%"><col style="width:16%"><col style="width:13%"><col style="width:21%">
+            <col style="width:6%"><col style="width:13%"><col style="width:8%"><col style="width:10%"><col style="width:8%">
+          </colgroup>
+          <thead style="display:table-header-group;">
             <tr style="background:#0f2444;color:#ffffff;">
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:5%;white-space:nowrap;">ลำดับ</th>
-              <th style="padding:${cellPadding};padding-left:6px;text-align:left;border:1px solid #0f2444;width:19%;white-space:nowrap;">ชื่อ-นามสกุล</th>
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:12%;white-space:nowrap;">ตำแหน่ง</th>
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:17%;white-space:nowrap;">ฝ่ายงาน</th>
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:17%;white-space:nowrap;">ห้อง/สถานที่</th>
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:12%;white-space:nowrap;">วันที่ใช้</th>
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:10%;white-space:nowrap;">เวลา</th>
-              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;width:8%;white-space:nowrap;">สถานะ</th>
+              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;">ลำดับ</th>
+              <th style="padding:${cellPadding};text-align:left;border:1px solid #0f2444;">ชื่อ-นามสกุล</th>
+              <th style="padding:${cellPadding};text-align:left;border:1px solid #0f2444;">ห้อง/สถานที่</th>
+              <th style="padding:${cellPadding};text-align:left;border:1px solid #0f2444;">วัตถุประสงค์</th>
+              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;line-height:1.2;">จำนวน<br>(คน)</th>
+              <th style="padding:${cellPadding};text-align:left;border:1px solid #0f2444;">กลุ่มผู้ใช้</th>
+              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;">วันที่</th>
+              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;">เวลา</th>
+              <th style="padding:${cellPadding};text-align:center;border:1px solid #0f2444;">สถานะ</th>
             </tr>
           </thead>
           <tbody>
             ${detailRows}
           </tbody>
         </table>
-      </div>
+      </section>
 
-      <!-- ================= PAGE BREAK (แยกหน้าที่ 2 : ตารางสรุป) ================= -->
-      <div class="html2pdf__page-break" style="page-break-before:always;break-before:page;height:0;line-height:0;margin:0;padding:0;"></div>
-
-      <!-- ================= หน้าที่ 2 : ตารางสรุปการจองแยกตามสถานที่ ================= -->
-      <div style="padding-top:6px;">
+      <!-- ================= หน้าที่ 2 : ตารางสรุปการจองแยกตามสถานที่ (ขึ้นหน้าใหม่เสมอ) ================= -->
+      <section class="report-page">
+        <div class="report-page-label">หน้าถัดไป · ตารางที่ 2 สรุปการจองแยกตามสถานที่</div>
         <div style="text-align:center;border-bottom:2px solid #0f2444;padding-bottom:6px;margin-bottom:12px;">
           <h2 style="font-size:12.5pt;font-weight:800;color:#0f2444;margin:0 0 2px;">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</h2>
           <p style="font-size:8.8pt;color:#475569;margin:0 0 3px;">สรุปสถิติการใช้สถานที่แยกตามห้อง/สถานที่ (${periodLabel})</p>
@@ -3704,13 +3702,11 @@ function buildReportHTML(bookings, periodLabel) {
             ${summaryFooterRow}
           </tbody>
         </table>
-      </div>
+      </section>
 
-      <!-- ================= PAGE BREAK (แยกหน้าที่ 3 : แผนภูมิแท่งและส่วนลงนามหน้าสุดท้าย) ================= -->
-      <div class="html2pdf__page-break" style="page-break-before:always;break-before:page;height:0;line-height:0;margin:0;padding:0;"></div>
-
-      <!-- ================= หน้าที่ 3 (หน้าสุดท้าย) : แผนภูมิแท่งเปรียบเทียบสถานที่, สรุปอันดับ และลายเซ็น ================= -->
-      <div style="padding-top:6px;">
+      <!-- ================= หน้าสุดท้าย : แผนภูมิแท่งเปรียบเทียบสถานที่, สรุปอันดับ และลายเซ็น (ขึ้นหน้าใหม่เสมอ) ================= -->
+      <section class="report-page">
+        <div class="report-page-label">หน้าสุดท้าย · แผนภูมิเปรียบเทียบและลงนาม</div>
         <div style="text-align:center;border-bottom:2px solid #0f2444;padding-bottom:6px;margin-bottom:12px;">
           <h2 style="font-size:12.5pt;font-weight:800;color:#0f2444;margin:0 0 2px;">โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี</h2>
           <p style="font-size:8.8pt;color:#475569;margin:0 0 3px;">แผนภูมิเปรียบเทียบสถิติการใช้สถานที่ (${periodLabel})</p>
@@ -3749,7 +3745,7 @@ function buildReportHTML(bookings, periodLabel) {
             <p style="margin:2px 0;color:#64748b;font-size:7.5pt;">วันที่ ........ / ................ / ............</p>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   `;
 }
@@ -3943,6 +3939,31 @@ function printDoc(html, isReport = false, docTitle = '') {
       border-radius: 8px;
     }
 
+    /* รายงาน: แต่ละส่วนเป็นแผ่น A4 แยกกันชัดเจนบนจอ และขึ้นหน้าใหม่เมื่อพิมพ์ */
+    .doc-page-wrap.is-report {
+      background: transparent;
+      box-shadow: none;
+      padding: 0;
+      max-width: 840px;
+      margin-top: 42px;
+    }
+    .report-page {
+      background: #ffffff;
+      padding: 26px 30px 30px;
+      margin: 0 0 34px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+      position: relative;
+    }
+    .report-page-label {
+      position: absolute;
+      top: -22px;
+      left: 4px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #64748b;
+    }
+
     @media print {
       .print-screen-bar {
         display: none !important;
@@ -3957,6 +3978,17 @@ function printDoc(html, isReport = false, docTitle = '') {
         box-shadow: none !important;
         border-radius: 0 !important;
       }
+      .report-page {
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
+      .report-page + .report-page {
+        page-break-before: always;
+        break-before: page;
+      }
+      .report-page-label { display: none !important; }
     }
 
     /* === REPORT SUMMARY STYLES === */
@@ -4169,7 +4201,7 @@ function printDoc(html, isReport = false, docTitle = '') {
       <button type="button" class="btn-action-close" onclick="window.close()">✕ ปิด</button>
     </div>
   </div>
-  <div class="doc-page-wrap">
+  <div class="doc-page-wrap ${isReport ? 'is-report' : ''}">
     ${html}
   </div>
 </body>
@@ -4467,6 +4499,13 @@ function formatDateThai(s) {
   if (!s) return '–';
   const d = new Date(s);
   return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear()+543}`;
+}
+// "2026-09-01" → "1/09/69" (ปี พ.ศ. 2 หลัก) สำหรับตารางรายงาน
+function formatDateShortThai(s) {
+  if (!s) return '–';
+  const [y, m, d] = String(s).split('-').map(Number);
+  if (!y || !m || !d) return '–';
+  return `${d}/${String(m).padStart(2, '0')}/${String(y + 543).slice(-2)}`;
 }
 function formatDateTimeThai(s) {
   if (!s) return '–';
