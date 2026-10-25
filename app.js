@@ -2706,7 +2706,6 @@ function calListGroupHtml(dateStr, items, groupIndex) {
     } else {
       pill = '<span class="lb-pill soon">จองแล้ว</span>';
     }
-    const who = [b.fullName, b.department].filter(Boolean).join(' · ');
     return `
       <button type="button" class="lb-item ${state}" style="--i:${i}" onclick="viewBookingDetail('${escapeHtml(String(b.id))}')">
         <div class="lb-time"><b>${escapeHtml(b.startTime)}</b><small>${escapeHtml(b.endTime)}</small></div>
@@ -2714,7 +2713,7 @@ function calListGroupHtml(dateStr, items, groupIndex) {
         <div class="lb-body">
           <div class="lb-room">📍 ${escapeHtml(b.room)}</div>
           <div class="lb-purpose">${escapeHtml(b.purpose || '–')}</div>
-          <div class="lb-who">👤 ${escapeHtml(who)}${b.studentCount ? ` · ${escapeHtml(b.studentCount)} คน` : ''}</div>
+          <div class="lb-who cl-who"><span class="cl-who-name">👤 ${escapeHtml(b.fullName || '–')}</span>${b.studentCount ? `<span class="cl-who-count">&nbsp;· ${escapeHtml(b.studentCount)} คน</span>` : ''}</div>
           ${progress}
         </div>
         <div class="lb-side">${pill}</div>

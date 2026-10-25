@@ -1590,3 +1590,9 @@ h1, h2, h3, h4, h5,
   .site-footer .footer-dev-icon svg,
   .site-footer .footer-dev-icon .dev-spark { animation: none; }
 }
+/* มุมมองรายการบนมือถือ: ชื่อผู้จองกับจำนวนคนอยู่บรรทัดเดียว ชื่อยาวใช้ ... */
+@media (max-width: 640px) {
+  .cl-items .cl-who { display: flex; min-width: 0; white-space: nowrap; }
+  .cl-items .cl-who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .cl-items .cl-who-count { flex: none; }
+}
