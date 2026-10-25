@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เชื่อมสีส่วนที่ 1 กับส่วนที่ 2 · 5 แบบ</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #f4f6fb; --ink: #0a1634; --head: #1b2559; --o: #f97316; --b: #2563eb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'IBM Plex Sans Thai', sans-serif; background: #d9dee8; color: #334155; }
+  .intro { max-width: 1200px; margin: 0 auto; padding: 28px 20px 0; }
+  .intro h1 { font-family: 'Prompt'; font-weight: 600; color: var(--head); margin: 0 0 4px; }
+  .intro p { margin: 0; color: #64748b; }
+  .variant { max-width: 1200px; margin: 24px auto 46px; padding: 0 20px; }
+  .label { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .label b { font-family: 'Prompt'; font-size: 1.3rem; color: #fff; background: var(--head); border-radius: 10px; padding: 1px 12px; }
+  .label span { font-family: 'Prompt'; font-size: 1.15rem; font-weight: 600; color: var(--head); }
+  .label small { color: #64748b; }
+  .frame { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.18); background: var(--bg); }
+
+  /* ส่วนที่ 1 (ย่อ) */
+  .hero { position: relative; height: 330px; overflow: hidden; isolation: isolate; }
+  .hero .photo { position: absolute; inset: 0; z-index: -2; background: url('../images/places/place-2.jpg') center 40%/cover; animation: zoom 14s ease-out infinite alternate; }
+  @keyframes zoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+  .hero .shade { position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 100% 100%, rgba(249,115,22,.3), transparent 50%), linear-gradient(270deg, rgba(10,22,52,.95), rgba(10,22,52,.75) 36%, rgba(10,22,52,.2) 70%, rgba(10,22,52,.08)); }
+  .hero .txt { position: absolute; right: 48px; top: 60px; text-align: right; color: #fff; }
+  .hero h2 { font-family: 'Prompt'; font-weight: 600; font-size: 2.8rem; line-height: 1.05; margin: 0; }
+  .hero h3 { font-family: 'Prompt'; font-weight: 500; font-size: 1.5rem; margin: 6px 0 0; color: #7dd3fc; }
+
+  /* ส่วนที่ 2 (ย่อ) */
+  .sec2 { position: relative; padding: 30px 40px 34px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; position: relative; z-index: 2; }
+  .card { background: #fff; border-radius: 20px; padding: 18px; box-shadow: 0 12px 30px rgba(15,36,68,.08); border: 1px solid rgba(15,36,68,.06); }
+  .card i { display: flex; width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid; align-items: center; justify-content: center; font-style: normal; margin-bottom: 10px; }
+  .card.o i { color: var(--o); border-color: #fdba74; } .card.b i { color: var(--b); border-color: #93c5fd; }
+  .card strong { font-family: 'Prompt'; font-weight: 600; color: var(--head); display: block; }
+  .card small { color: #64748b; font-size: .82rem; }
+
+  /* 1. ไล่สีจางลงพื้นหลัง */
+  .v1 .hero::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 150px; background: linear-gradient(180deg, transparent, rgba(244,246,251,.6) 60%, var(--bg)); }
+
+  /* 2. คลื่นโค้ง 2 ชั้น เคลื่อนไหวช้า ๆ */
+  .v2 .wave { position: absolute; left: 0; right: 0; bottom: -1px; height: 90px; z-index: 1; overflow: hidden; }
+  .v2 .wave svg { position: absolute; bottom: 0; width: 200%; height: 100%; }
+  .v2 .wave .w1 { fill: rgba(249,115,22,.35); animation: drift 14s linear infinite; }
+  .v2 .wave .w2 { fill: var(--bg); animation: drift 22s linear infinite reverse; }
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* 3. แถบไล่เฉดจากน้ำเงินลงขาว (ส่วนที่ 2 เริ่มด้วยสีเดียวกับรูป) */
+  .v3 .sec2 { background: linear-gradient(180deg, #0f1d42 0%, #24365f 28%, #c9d3e6 62%, var(--bg) 100%); padding-top: 40px; }
+  .v3 .sec2::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 80% 0%, rgba(249,115,22,.25), transparent 45%); }
+  .v3 .hero .shade { background: radial-gradient(ellipse at 100% 100%, rgba(249,115,22,.3), transparent 50%), linear-gradient(270deg, rgba(10,22,52,.95), rgba(10,22,52,.75) 36%, rgba(10,22,52,.2) 70%, rgba(10,22,52,.08)), linear-gradient(0deg, #0f1d42 0%, transparent 40%); }
+
+  /* 4. ตัดเฉียง + เส้นส้มวิ่ง */
+  .v4 .hero { clip-path: polygon(0 0, 100% 0, 100% 78%, 0 100%); }
+  .v4 .edge { position: absolute; left: 0; right: 0; top: 256px; height: 74px; z-index: 3; pointer-events: none; }
+  .v4 .edge svg { width: 100%; height: 100%; }
+  .v4 .edge line { stroke: var(--o); stroke-width: 4; stroke-dasharray: 60 1200; animation: run 4s linear infinite; }
+  .v4 .edge line.base { stroke: rgba(249,115,22,.35); stroke-width: 2; stroke-dasharray: none; animation: none; }
+  @keyframes run { from { stroke-dashoffset: 1260; } to { stroke-dashoffset: 0; } }
+  .v4 .sec2 { margin-top: -50px; padding-top: 60px; }
+
+  /* 5. แผ่นโค้งมนยกขึ้นมาชนขอบรูป */
+  .v5 .sec2 { margin-top: -34px; background: var(--bg); border-radius: 34px 34px 0 0; padding-top: 34px; box-shadow: 0 -14px 34px rgba(10,22,52,.18); }
+  .v5 .sec2::before { content: ''; position: absolute; top: 12px; left: 50%; width: 56px; height: 5px; border-radius: 5px; transform: translateX(-50%); background: linear-gradient(90deg, var(--o), #fdba74); }
+  .v5 .hero .shade { background: radial-gradient(ellipse at 100% 100%, rgba(249,115,22,.3), transparent 50%), linear-gradient(270deg, rgba(10,22,52,.95), rgba(10,22,52,.75) 36%, rgba(10,22,52,.2) 70%, rgba(10,22,52,.08)), linear-gradient(0deg, rgba(10,22,52,.55), transparent 35%); }
+
+  .note { margin-top: 10px; background: #fff; border-radius: 12px; padding: 10px 14px; font-size: .93rem; }
+  .note strong { color: #ea580c; }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <h1>เชื่อมสีระหว่างส่วนที่ 1 (รูปเข้ม) กับส่วนที่ 2 (พื้นสว่าง) · 5 แบบ</h1>
+    <p>เปิดในเบราว์เซอร์เพื่อดูอนิเมชันจริง · ทุกแบบใช้ฟอนต์ Prompt (หัวข้อ) + IBM Plex Sans Thai (เนื้อหา) แบบเว็บตัวอย่าง</p>
+  </div>
+
+  <section class="variant v1">
+    <div class="label"><b>1</b><span>ไล่สีจาง (Soft Fade)</span><small>ขอบล่างของรูปค่อย ๆ จางเป็นสีพื้นหลัง ไม่มีเส้นแบ่ง</small></div>
+    <div class="frame">
+      <div class="hero"><div class="photo"></div><div class="shade"></div><div class="txt"><h2>ฝ่ายบริหาร<br>งานทั่วไป</h2><h3>งานอาคารและสถานที่</h3></div></div>
+      <div class="sec2"><div class="cards">
+        <div class="card o"><i>📝</i><strong>จองสถานที่</strong><small>จองวันเดียวหรือหลายวัน</small></div>
+        <div class="card b"><i>📅</i><strong>ปฏิทินการจอง</strong><small>ดูการจองทั้งเดือน</small></div>
+        <div class="card o"><i>🔍</i><strong>ค้นหาห้องว่าง</strong><small>บอกห้องที่ว่างทันที</small></div>
+        <div class="card b"><i>🎫</i><strong>ยกเลิกการจอง</strong><small>ใช้รหัส 6 หลัก</small></div>
+      </div></div>
+    </div>
+    <div class="note">👍 นุ่มนวลที่สุด เรียบง่าย · ⚠️ รูปส่วนล่างจะจางลง เห็นพื้นตึกน้อยลง</div>
+  </section>
+
+  <section class="variant v2">
+    <div class="label"><b>2</b><span>คลื่นโค้ง 2 ชั้น (Wave)</span><small>คลื่นสีส้มโปร่งกับคลื่นสีพื้นหลัง ลอยเคลื่อนช้า ๆ</small></div>
+    <div class="frame">
+      <div class="hero"><div class="photo"></div><div class="shade"></div><div class="txt"><h2>ฝ่ายบริหาร<br>งานทั่วไป</h2><h3>งานอาคารและสถานที่</h3></div>
+        <div class="wave">
+          <svg viewBox="0 0 2880 90" preserveAspectRatio="none"><path class="w1" d="M0 40 C 240 0 480 80 720 40 S 1200 0 1440 40 S 1920 80 2160 40 S 2640 0 2880 40 V90 H0Z"/></svg>
+          <svg viewBox="0 0 2880 90" preserveAspectRatio="none"><path class="w2" d="M0 55 C 300 20 540 90 780 55 S 1200 25 1440 55 S 1980 90 2220 55 S 2640 25 2880 55 V90 H0Z"/></svg>
+        </div>
+      </div>
+      <div class="sec2"><div class="cards">
+        <div class="card o"><i>📝</i><strong>จองสถานที่</strong><small>จองวันเดียวหรือหลายวัน</small></div>
+        <div class="card b"><i>📅</i><strong>ปฏิทินการจอง</strong><small>ดูการจองทั้งเดือน</small></div>
+        <div class="card o"><i>🔍</i><strong>ค้นหาห้องว่าง</strong><small>บอกห้องที่ว่างทันที</small></div>
+        <div class="card b"><i>🎫</i><strong>ยกเลิกการจอง</strong><small>ใช้รหัส 6 หลัก</small></div>
+      </div></div>
+    </div>
+    <div class="note">👍 <strong>แนะนำ</strong> · มีชีวิตชีวา ดูทันสมัย มีสีส้มเชื่อมธีม เห็นรูปเกือบเต็ม</div>
+  </section>
+
+  <section class="variant v3">
+    <div class="label"><b>3</b><span>แถบไล่เฉดน้ำเงินลงขาว (Gradient Band)</span><small>ส่วนที่ 2 เริ่มด้วยสีน้ำเงินเดียวกับรูป แล้วค่อย ๆ สว่าง การ์ดลอยอยู่บนแถบ</small></div>
+    <div class="frame">
+      <div class="hero"><div class="photo"></div><div class="shade"></div><div class="txt"><h2>ฝ่ายบริหาร<br>งานทั่วไป</h2><h3>งานอาคารและสถานที่</h3></div></div>
+      <div class="sec2"><div class="cards">
+        <div class="card o"><i>📝</i><strong>จองสถานที่</strong><small>จองวันเดียวหรือหลายวัน</small></div>
+        <div class="card b"><i>📅</i><strong>ปฏิทินการจอง</strong><small>ดูการจองทั้งเดือน</small></div>
+        <div class="card o"><i>🔍</i><strong>ค้นหาห้องว่าง</strong><small>บอกห้องที่ว่างทันที</small></div>
+        <div class="card b"><i>🎫</i><strong>ยกเลิกการจอง</strong><small>ใช้รหัส 6 หลัก</small></div>
+      </div></div>
+    </div>
+    <div class="note">👍 ต่อเนื่องที่สุด การ์ดขาวเด่นบนพื้นเข้ม ดูหรู · ⚠️ ช่วงบนของส่วนที่ 2 จะเข้มขึ้น</div>
+  </section>
+
+  <section class="variant v4">
+    <div class="label"><b>4</b><span>ตัดเฉียง + เส้นส้มวิ่ง (Diagonal)</span><small>ขอบล่างรูปตัดเฉียง มีแสงสีส้มวิ่งไปตามเส้น</small></div>
+    <div class="frame">
+      <div class="hero"><div class="photo"></div><div class="shade"></div><div class="txt"><h2>ฝ่ายบริหาร<br>งานทั่วไป</h2><h3>งานอาคารและสถานที่</h3></div></div>
+      <div class="edge"><svg viewBox="0 0 1160 74" preserveAspectRatio="none"><line class="base" x1="0" y1="74" x2="1160" y2="2"/><line x1="0" y1="74" x2="1160" y2="2"/></svg></div>
+      <div class="sec2"><div class="cards">
+        <div class="card o"><i>📝</i><strong>จองสถานที่</strong><small>จองวันเดียวหรือหลายวัน</small></div>
+        <div class="card b"><i>📅</i><strong>ปฏิทินการจอง</strong><small>ดูการจองทั้งเดือน</small></div>
+        <div class="card o"><i>🔍</i><strong>ค้นหาห้องว่าง</strong><small>บอกห้องที่ว่างทันที</small></div>
+        <div class="card b"><i>🎫</i><strong>ยกเลิกการจอง</strong><small>ใช้รหัส 6 หลัก</small></div>
+      </div></div>
+    </div>
+    <div class="note">👍 เท่ มีพลัง ดูเป็นงานออกแบบ · ⚠️ มุมล่างซ้ายของรูปถูกตัดไปบางส่วน</div>
+  </section>
+
+  <section class="variant v5">
+    <div class="label"><b>5</b><span>แผ่นโค้งมน (Rounded Sheet)</span><small>ส่วนที่ 2 เป็นแผ่นมุมโค้งยกขึ้นมาชนขอบล่างรูป มีขีดส้มตรงกลาง</small></div>
+    <div class="frame">
+      <div class="hero"><div class="photo"></div><div class="shade"></div><div class="txt"><h2>ฝ่ายบริหาร<br>งานทั่วไป</h2><h3>งานอาคารและสถานที่</h3></div></div>
+      <div class="sec2"><div class="cards">
+        <div class="card o"><i>📝</i><strong>จองสถานที่</strong><small>จองวันเดียวหรือหลายวัน</small></div>
+        <div class="card b"><i>📅</i><strong>ปฏิทินการจอง</strong><small>ดูการจองทั้งเดือน</small></div>
+        <div class="card o"><i>🔍</i><strong>ค้นหาห้องว่าง</strong><small>บอกห้องที่ว่างทันที</small></div>
+        <div class="card b"><i>🎫</i><strong>ยกเลิกการจอง</strong><small>ใช้รหัส 6 หลัก</small></div>
+      </div></div>
+    </div>
+    <div class="note">👍 ดูเป็นแอปมือถือยุคใหม่ เปลี่ยนส่วนชัดแต่นุ่มนวล · ⚠️ แผ่นโค้งยกขึ้นทับขอบล่างรูปเล็กน้อย (ไม่ทับข้อความ)</div>
+  </section>
+</body>
+</html>

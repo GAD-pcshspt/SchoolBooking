@@ -1371,6 +1371,7 @@ function refreshVenueViews() {
   renderAnnouncementBar();
   renderLastBookingBar();
   if (typeof renderMultiDayPanel === 'function') renderMultiDayPanel();
+  if (isPageVisible('pageHome') && typeof renderLiveBoard === 'function') renderLiveBoard();
   if (isPageVisible('pageCancel') && typeof renderCancelPage === 'function') renderCancelPage();
   if (isPageVisible('pageVenues')) renderVenuesPage();
   if (isPageVisible('pageVenueDetail')) renderVenueDetail();

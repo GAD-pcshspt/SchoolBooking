@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>การ์ด 4 ช่อง · รูปทรงไอคอนมินิมอล 10 แบบ</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --o: #f97316; --o2: #ea580c; --b: #2563eb; --b2: #1e3a8a; --ink: #0f2444; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Kanit', sans-serif; background: #f4f6fb; color: var(--ink); }
+  .intro { max-width: 1180px; margin: 0 auto; padding: 28px 20px 0; }
+  .intro h1 { margin: 0 0 4px; font-weight: 600; }
+  .intro p { margin: 0; color: #64748b; font-weight: 300; }
+  .row { max-width: 1180px; margin: 22px auto 34px; padding: 0 20px; }
+  .label { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .label b { min-width: 40px; text-align: center; font-size: 1.15rem; color: #fff; background: var(--ink); border-radius: 10px; padding: 1px 10px; }
+  .label span { font-size: 1.1rem; font-weight: 600; }
+  .label small { color: #64748b; font-weight: 300; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .card { position: relative; background: #fff; border-radius: 22px; padding: 22px 20px 18px; box-shadow: 0 10px 30px rgba(15,36,68,.07); border: 1px solid rgba(15,36,68,.05); transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s; cursor: pointer; }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 22px 44px rgba(15,36,68,.13); }
+  .card h4 { margin: 16px 0 3px; font-size: 1.08rem; font-weight: 600; }
+  .card p { margin: 0; font-size: .82rem; font-weight: 300; color: #64748b; }
+  .card .go { display: inline-block; margin-top: 10px; font-size: .84rem; color: var(--o2); transition: transform .3s; }
+  .card:hover .go { transform: translateX(5px); }
+  .num { position: absolute; top: 16px; right: 18px; font-size: .78rem; font-weight: 500; color: #cbd5e1; letter-spacing: .08em; }
+  .card.o { --c: var(--o); --c2: var(--o2); --soft: #fff1e6; }
+  .card.b { --c: var(--b); --c2: var(--b2); --soft: #eff6ff; }
+  .ico { position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; color: var(--c); }
+  svg.ic { position: relative; z-index: 1; width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* 1. วงแหวนเส้นบาง วาดตัวเองวนรอบ */
+  .s1 .ico svg.ring { position: absolute; inset: 0; width: 64px; height: 64px; transform: rotate(-90deg); }
+  .s1 .ring circle { fill: none; stroke: var(--c); stroke-width: 1.5; stroke-dasharray: 176; stroke-dashoffset: 176; animation: draw1 3.2s ease-in-out infinite; }
+  .s1 .ring .bg { stroke: var(--soft); stroke-dashoffset: 0; animation: none; }
+  @keyframes draw1 { 0% { stroke-dashoffset: 176; } 50% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -176; } }
+
+  /* 2. หกเหลี่ยม ลอยขึ้นลง + หมุนเบา ๆ */
+  .s2 .ico::before { content: ''; position: absolute; inset: 2px; background: var(--soft); clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%); animation: hex 5s ease-in-out infinite; }
+  @keyframes hex { 50% { transform: translateY(-5px) rotate(30deg); } }
+
+  /* 3. สี่เหลี่ยมข้าวหลามตัด หายใจเข้าออก */
+  .s3 .ico::before { content: ''; position: absolute; width: 44px; height: 44px; border-radius: 10px; border: 1.5px solid var(--c); transform: rotate(45deg); animation: breathe 2.8s ease-in-out infinite; }
+  .s3 .ico::after { content: ''; position: absolute; width: 44px; height: 44px; border-radius: 10px; background: var(--soft); transform: rotate(45deg) scale(.82); }
+  @keyframes breathe { 50% { transform: rotate(45deg) scale(1.12); opacity: .4; } }
+
+  /* 4. หยดน้ำ/บล็อบ เปลี่ยนรูปทรงไหลไปมา */
+  .s4 .ico::before { content: ''; position: absolute; inset: 4px; background: var(--soft); border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; animation: morph 6s ease-in-out infinite; }
+  @keyframes morph {
+    33% { border-radius: 63% 37% 41% 59% / 55% 38% 62% 45%; }
+    66% { border-radius: 38% 62% 50% 50% / 62% 57% 43% 38%; }
+  }
+
+  /* 5. ทรงโค้งประตู (arch) เด้งขึ้นลง */
+  .s5 .ico::before { content: ''; position: absolute; left: 10px; right: 10px; top: 4px; bottom: 4px; border-radius: 999px 999px 8px 8px; background: var(--soft); border-bottom: 3px solid var(--c); animation: bob 2.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-4px); } }
+
+  /* 6. จุดสีเล็ก + คลื่นวงกระจายออก (ping) */
+  .s6 .ico { justify-content: flex-start; }
+  .s6 .dot { position: absolute; left: 0; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; background: var(--c); }
+  .s6 .dot::before, .s6 .dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--c); animation: ping 2.4s ease-out infinite; }
+  .s6 .dot::after { animation-delay: 1.2s; }
+  .s6 svg.ic { margin-left: 22px; }
+  @keyframes ping { from { transform: scale(1); opacity: .9; } to { transform: scale(4.2); opacity: 0; } }
+
+  /* 7. กรอบมนขอบไล่สีหมุนรอบ (conic) */
+  .s7 .ico::before { content: ''; position: absolute; inset: 0; border-radius: 20px; background: conic-gradient(from var(--a, 0deg), var(--c), transparent 40%, var(--c) 80%); animation: turn 3s linear infinite; }
+  .s7 .ico::after { content: ''; position: absolute; inset: 2px; border-radius: 18px; background: #fff; }
+  @property --a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  @keyframes turn { to { --a: 360deg; } }
+
+  /* 8. ทรงใบไม้ แกว่งเบา ๆ */
+  .s8 .ico::before { content: ''; position: absolute; inset: 6px; border-radius: 4px 50% 4px 50%; background: linear-gradient(135deg, var(--soft), #fff); border: 1.5px solid var(--c); animation: sway 3.4s ease-in-out infinite; transform-origin: 20% 80%; }
+  @keyframes sway { 50% { transform: rotate(-8deg); } }
+
+  /* 9. แคปซูลแนวตั้ง มีของเหลวค่อย ๆ เติมขึ้น */
+  .s9 .ico { width: 44px; margin-left: 10px; }
+  .s9 .ico::before { content: ''; position: absolute; inset: 0; border-radius: 999px; border: 1.5px solid var(--c); }
+  .s9 .fill { position: absolute; left: 3px; right: 3px; bottom: 3px; border-radius: 999px; background: var(--soft); animation: fill 3.6s ease-in-out infinite; }
+  @keyframes fill { 0%, 100% { height: 20%; } 50% { height: calc(100% - 6px); } }
+
+  /* 10. ไม่มีกรอบ ไอคอนวาดเส้นตัวเอง + เส้นใต้ยืดออก */
+  .s10 .ico { justify-content: flex-start; }
+  .s10 svg.ic { width: 34px; height: 34px; stroke-dasharray: 1; stroke-dashoffset: 1; animation: selfdraw 3.4s ease-in-out infinite; }
+  .s10 .ico::after { content: ''; position: absolute; left: 0; bottom: 6px; height: 3px; border-radius: 3px; background: var(--c); animation: line 3.4s ease-in-out infinite; }
+  @keyframes selfdraw { 0% { stroke-dashoffset: 1; } 45%, 80% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -1; } }
+  @keyframes line { 0% { width: 0; } 45%, 80% { width: 40px; } 100% { width: 0; opacity: 0; } }
+
+  /* ชี้แล้วไอคอนขยับ (ทุกแบบ) */
+  .card:hover svg.ic { animation-duration: 1.4s; }
+  .card:hover .ico { transform: scale(1.06); }
+  .ico { transition: transform .35s cubic-bezier(.2,.7,.2,1); }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-book" viewBox="0 0 24 24"><rect pathLength="1" x="3" y="4" width="18" height="17" rx="3"/><path pathLength="1" d="M8 2v4M16 2v4M3 9h18"/><path pathLength="1" d="M12 12.5v5M9.5 15h5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path pathLength="1" d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3"/><path pathLength="1" d="M8 21h4"/><circle pathLength="1" cx="16.5" cy="15.5" r="3.5"/><path pathLength="1" d="M19 18l2.5 2.5"/></symbol>
+    <symbol id="i-place" viewBox="0 0 24 24"><path pathLength="1" d="M3 21h18"/><path pathLength="1" d="M5 21V8l7-5 7 5v13"/><path pathLength="1" d="M9 21v-6h6v6"/><path pathLength="1" d="M9 10h.01M15 10h.01"/></symbol>
+    <symbol id="i-cancel" viewBox="0 0 24 24"><path pathLength="1" d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2.5 2.5 0 0 0 0 5v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2.5 2.5 0 0 0 0-5z"/><path pathLength="1" d="M10 10l4 4M14 10l-4 4"/></symbol>
+  </svg>
+
+  <div class="intro">
+    <h1>การ์ด 4 ช่อง · รูปทรงไอคอนมินิมอล 10 แบบ</h1>
+    <p>ทุกแบบมีอนิเมชันวนตลอดแบบเบา ๆ และขยับเร็วขึ้นเมื่อชี้เมาส์ · สลับสีส้ม/น้ำเงิน · เปิดหน้านี้ในเบราว์เซอร์เพื่อดูอนิเมชันจริง</p>
+  </div>
+
+  <div id="rows"></div>
+
+  <script>
+    // สร้าง 10 แถวจากข้อมูลเดียวกัน (การ์ดเหมือนกัน ต่างกันที่รูปทรงไอคอน)
+    const styles = [
+      ['วงแหวนเส้นบาง', 'เส้นวงกลมวาดตัวเองวนรอบไอคอน'],
+      ['หกเหลี่ยม', 'ลอยขึ้นลง พร้อมหมุนเบา ๆ'],
+      ['ข้าวหลามตัด', 'กรอบสี่เหลี่ยมเอียง หายใจเข้า-ออก'],
+      ['บล็อบ (หยดน้ำ)', 'รูปทรงไหลเปลี่ยนไปเรื่อย ๆ แบบออร์แกนิก'],
+      ['ทรงโค้งประตู', 'ซุ้มโค้งมีฐานสี เด้งขึ้นลงช้า ๆ'],
+      ['จุดสัญญาณ', 'จุดสีเล็ก ๆ ส่งคลื่นวงกระจายออก ไอคอนไม่มีกรอบ'],
+      ['กรอบไล่สีหมุน', 'ขอบสี่เหลี่ยมมนมีแสงไล่สีวิ่งวนรอบ'],
+      ['ใบไม้', 'ทรงใบไม้ขอบบาง แกว่งไปมาเหมือนโดนลม'],
+      ['แคปซูลเติมน้ำ', 'แคปซูลแนวตั้ง มีสีค่อย ๆ เติมขึ้นแล้วลดลง'],
+      ['เส้นวาดตัวเอง', 'ไม่มีกรอบเลย ไอคอนวาดเส้นตัวเอง + เส้นใต้ยืดออก (มินิมอลที่สุด)'],
+    ];
+    const cards = [
+      ['o', 'i-book', 'จองสถานที่', 'จองวันเดียวหรือหลายวัน ได้รหัสยกเลิกทันที', 'เริ่มจอง'],
+      ['b', 'i-search', 'ค้นหาห้องว่าง', 'เลือกวันเวลา ระบบบอกห้องที่ว่างให้ทันที', 'ค้นหา'],
+      ['o', 'i-place', 'ข้อมูลสถานที่', 'ความจุ อุปกรณ์ และตารางรายสัปดาห์', 'ดูสถานที่'],
+      ['b', 'i-cancel', 'ยกเลิกการจอง', 'ใช้รหัส 6 หลัก ยกเลิกได้ด้วยตนเอง', 'ยกเลิก'],
+    ];
+    const extra = n => n === 1 ? '<svg class="ring" viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="28"/></svg>'
+      : n === 6 ? '<span class="dot"></span>' : n === 9 ? '<span class="fill"></span>' : '';
+    document.getElementById('rows').innerHTML = styles.map(([name, desc], k) => {
+      const n = k + 1;
+      return `<section class="row s${n}">
+        <div class="label"><b>${n}</b><span>${name}</span><small>${desc}</small></div>
+        <div class="cards">${cards.map(([c, icon, title, text, go], i) => `
+          <div class="card ${c}" style="animation-delay:${i * .3}s">
+            <span class="num">0${i + 1}</span>
+            <div class="ico" style="--delay:${i * .4}s">${extra(n)}<svg class="ic"><use href="#${icon}"/></svg></div>
+            <h4>${title}</h4><p>${text}</p><span class="go">${go} →</span>
+          </div>`).join('')}</div>
+      </section>`;
+    }).join('');
+    // ให้แต่ละการ์ดในแถวขยับไม่พร้อมกัน ดูเป็นธรรมชาติ
+    document.querySelectorAll('.card').forEach((card, i) => {
+      card.querySelectorAll('.ico, .ico *').forEach(el => el.style.animationDelay = `${(i % 4) * .35}s`);
+      card.querySelector('.ico').style.setProperty('animation-delay', `${(i % 4) * .35}s`);
+    });
+  </script>
+</body>
+</html>

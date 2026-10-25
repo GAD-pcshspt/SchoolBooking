@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตัวอย่างหน้าแรก แบบ A · ฟอนต์ + การ์ด 5 แบบ</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Prompt:wght@300;400;500;600;700;800&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Anuphan:wght@300;400;500;600;700&family=Bai+Jamjuree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --img: url('file:///D:/ทำเวปจองสถานที่/images/places/place-2.jpg');
+    --p1: url('file:///D:/ทำเวปจองสถานที่/images/places/place-1.jpg');
+    --p2: url('file:///D:/ทำเวปจองสถานที่/images/places/place-6.jpg');
+    --p3: url('file:///D:/ทำเวปจองสถานที่/images/places/place-4.jpg');
+    --p4: url('file:///D:/ทำเวปจองสถานที่/images/places/place-3.jpg');
+    --navy: #0f2444; --ink: #0a1634; --blue: #2563eb; --orange: #f97316; --orange2: #ea580c; --sky: #7dd3fc;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Kanit', sans-serif; background: #e5e7eb; color: #0f172a; }
+  .intro { max-width: 1200px; margin: 0 auto; padding: 28px 20px 4px; }
+  .intro h1 { margin: 0 0 6px; font-weight: 600; }
+  .intro p { margin: 0; color: #475569; }
+  .variant { max-width: 1200px; margin: 26px auto 50px; padding: 0 20px; }
+  .label { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; font-family: 'Kanit'; }
+  .label b { font-size: 1.4rem; color: #fff; background: var(--blue); border-radius: 12px; padding: 2px 14px; }
+  .label span { font-size: 1.2rem; font-weight: 600; }
+  .label small { color: #64748b; font-size: .95rem; font-family: 'Sarabun', sans-serif; }
+  .sheet { border-radius: 18px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,.2); background: #f4f6fb; }
+  .fontline { margin-top: 10px; background: #fff; border-radius: 12px; padding: 10px 14px; font-size: .95rem; color: #334155; }
+  .fontline strong { color: var(--orange2); }
+
+  /* ฟอนต์ของแต่ละเวอร์ชัน (ใช้ทั้งเว็บ) */
+  .f-kanit  { font-family: 'Kanit', sans-serif; }
+  .f-prompt { font-family: 'Prompt', sans-serif; }
+  .f-plex   { font-family: 'IBM Plex Sans Thai', sans-serif; }
+  .f-anu    { font-family: 'Anuphan', sans-serif; }
+  .f-bai    { font-family: 'Bai Jamjuree', sans-serif; }
+
+  /* HERO แบบ A: รูปเต็ม ข้อความชิดขวา ไม่มีปุ่ม */
+  .hero { position: relative; height: 470px; isolation: isolate; overflow: hidden; }
+  .hero .photo { position: absolute; inset: 0; z-index: -2; background: var(--img) center/cover; animation: zoom 12s ease-out infinite alternate; }
+  @keyframes zoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+  .hero .shade { position: absolute; inset: 0; z-index: -1; background: linear-gradient(270deg, rgba(10,22,52,.95) 0%, rgba(10,22,52,.75) 38%, rgba(10,22,52,.15) 72%, transparent 100%); }
+  .text { position: absolute; right: 56px; top: 64px; bottom: 30px; width: 600px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; text-align: right; color: #fff; }
+  .title { font-weight: 800; font-size: 4.1rem; line-height: 1.05; margin: 0; }
+  .f-plex .title, .f-anu .title, .f-bai .title { font-weight: 700; }
+  .sub { font-weight: 500; font-size: 2rem; color: var(--sky); margin: 8px 0 10px; }
+  .slogan-line { display: flex; align-items: center; gap: 10px; }
+  .slogan-line::before { content: ''; width: 40px; height: 2px; background: var(--orange); }
+  .slogan { font-size: .98rem; font-weight: 300; color: rgba(255,255,255,.85); margin: 0; white-space: nowrap; }
+  .dots { position: absolute; right: 56px; bottom: 24px; display: flex; gap: 6px; }
+  .dots i { width: 26px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.35); }
+  .dots i:first-child { background: var(--orange); }
+
+  /* แถบเมนูขาว + ปุ่มเด่น 2 ปุ่ม */
+  .bar { position: absolute; inset: 0 0 auto 0; height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 22px; background: #fff; color: var(--navy); box-shadow: 0 6px 20px rgba(0,0,0,.15); z-index: 5; }
+  .bar .logo { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #fbbf24, #b45309); }
+  .bar .name { font-weight: 600; line-height: 1.1; }
+  .bar .name small { display: block; font-size: .5rem; letter-spacing: .14em; color: #64748b; font-weight: 400; }
+  .bar nav { margin-left: auto; display: flex; gap: 8px; font-size: .92rem; align-items: center; }
+  .bar nav i { font-style: normal; color: #334155; padding: 8px 10px; }
+  .bar nav i.on { color: var(--navy); font-weight: 600; box-shadow: inset 0 -3px 0 var(--orange); }
+  .bar nav .cta { font-style: normal; padding: 9px 16px; border-radius: 12px; font-weight: 600; color: #fff; display: inline-flex; align-items: center; gap: 6px; }
+  .bar nav .cta.o { background: linear-gradient(135deg, var(--orange), var(--orange2)); box-shadow: 0 6px 16px rgba(234,88,12,.35); }
+  .bar nav .cta.n { background: linear-gradient(135deg, #2563eb, #1e3a8a); box-shadow: 0 6px 16px rgba(37,99,235,.3); }
+  .bar .admin { margin-left: 8px; padding: 8px 14px; border-radius: 999px; font-size: .8rem; border: 1.5px solid #cbd5e1; color: var(--navy); }
+
+  /* การ์ด 4 ช่อง (โครงร่วม) */
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 0 40px 36px; margin-top: -40px; position: relative; z-index: 3; }
+  .card { position: relative; background: #fff; border-radius: 24px; padding: 22px 20px 20px; box-shadow: 0 16px 40px rgba(10,22,52,.12); overflow: hidden; }
+  .card h4 { margin: 12px 0 4px; font-size: 1.12rem; font-weight: 600; color: var(--ink); }
+  .card p { margin: 0; font-size: .84rem; font-weight: 300; color: #64748b; line-height: 1.55; }
+  .card .go { display: inline-block; margin-top: 10px; font-size: .86rem; font-weight: 500; color: var(--orange2); }
+  .num { position: absolute; top: 14px; right: 18px; font-size: 2.6rem; font-weight: 300; color: rgba(15,23,42,.08); }
+  svg.ic { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* การ์ดแบบ 1: ไอคอนเส้นในทรงสี่เหลี่ยมมนเอียง (squircle) */
+  .c1 .box { width: 60px; height: 60px; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #fff; transform: rotate(-6deg); }
+  .c1 .box svg { transform: rotate(6deg); }
+  .c1 .o .box { background: linear-gradient(135deg, var(--orange), var(--orange2)); box-shadow: 0 10px 22px rgba(234,88,12,.35); }
+  .c1 .n .box { background: linear-gradient(135deg, #3b82f6, #1e3a8a); box-shadow: 0 10px 22px rgba(37,99,235,.35); }
+
+  /* การ์ดแบบ 2: รูปสถานที่จริงด้านบน + ไอคอนวงกลมลอย */
+  .c2 .card { padding: 0 0 18px; }
+  .c2 .thumb { height: 104px; background: center/cover; position: relative; }
+  .c2 .thumb::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(10,22,52,.55), transparent 60%); }
+  .c2 .badge { position: absolute; left: 18px; bottom: -24px; z-index: 2; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; border: 4px solid #fff; }
+  .c2 .o .badge { background: var(--orange); } .c2 .n .badge { background: var(--blue); }
+  .c2 .num { color: rgba(255,255,255,.75); z-index: 2; font-weight: 500; font-size: 1.8rem; }
+  .c2 h4, .c2 p, .c2 .go { padding: 0 18px; }
+  .c2 h4 { margin-top: 32px; }
+
+  /* การ์ดแบบ 3: ไอคอนกระจกซ้อนชั้น (glass 3D) */
+  .c3 .glassic { position: relative; width: 66px; height: 66px; }
+  .c3 .glassic::before { content: ''; position: absolute; width: 46px; height: 46px; border-radius: 14px; left: 0; top: 0; transform: rotate(-12deg); }
+  .c3 .glassic span { position: absolute; right: 0; bottom: 0; width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.9); backdrop-filter: blur(6px); box-shadow: 0 8px 20px rgba(15,23,42,.12); }
+  .c3 .o .glassic::before { background: linear-gradient(135deg, #fdba74, var(--orange2)); } .c3 .o .glassic span { color: var(--orange2); }
+  .c3 .n .glassic::before { background: linear-gradient(135deg, #93c5fd, #1d4ed8); } .c3 .n .glassic span { color: #1d4ed8; }
+
+  /* การ์ดแบบ 4: ไอคอนเส้นใหญ่จาง ๆ มุมขวาล่าง + แถบสีซ้าย */
+  .c4 .card { padding-left: 26px; }
+  .c4 .card::before { content: ''; position: absolute; left: 0; top: 18px; bottom: 18px; width: 5px; border-radius: 0 5px 5px 0; }
+  .c4 .o::before { background: var(--orange); } .c4 .n::before { background: var(--blue); }
+  .c4 .big { position: absolute; right: -14px; bottom: -16px; opacity: .1; }
+  .c4 .big svg { width: 120px; height: 120px; stroke-width: 1.3; }
+  .c4 .o .big { color: var(--orange2); } .c4 .n .big { color: var(--blue); }
+  .c4 .tag { display: inline-block; font-size: .75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+  .c4 .o .tag { background: #fff1e6; color: var(--orange2); } .c4 .n .tag { background: #eff6ff; color: var(--blue); }
+  .c4 .num { display: none; }
+  .c4 .small { display: inline-flex; vertical-align: middle; margin-right: 8px; }
+  .c4 .small svg { width: 22px; height: 22px; }
+  .c4 .o .small { color: var(--orange2); } .c4 .n .small { color: var(--blue); }
+
+  /* การ์ดแบบ 5: ไอคอนในวงกลม มีวงโคจรหมุน + เลขเป็นขั้นตอน */
+  .c5 .orbit { position: relative; width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; }
+  .c5 .orbit::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px dashed; animation: spin 14s linear infinite; }
+  .c5 .orbit::after { content: ''; position: absolute; top: -3px; left: 50%; width: 10px; height: 10px; border-radius: 50%; transform-origin: 0 38px; animation: spin 6s linear infinite; }
+  .c5 .orbit span { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; }
+  .c5 .o .orbit::before { border-color: #fdba74; } .c5 .o .orbit::after { background: var(--orange); } .c5 .o .orbit span { background: linear-gradient(135deg, var(--orange), var(--orange2)); }
+  .c5 .n .orbit::before { border-color: #93c5fd; } .c5 .n .orbit::after { background: var(--blue); } .c5 .n .orbit span { background: linear-gradient(135deg, #3b82f6, #1e3a8a); }
+  .c5 .num { font-size: .78rem; font-weight: 600; color: #94a3b8; letter-spacing: .1em; top: 22px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <!-- ไอคอนเส้น (SVG) ใช้ร่วมกันทุกแบบ -->
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-book" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 9h18"/><path d="M12 12.5v5M9.5 15h5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3"/><path d="M8 21h4"/><circle cx="16.5" cy="15.5" r="3.5"/><path d="M19 18l2.5 2.5"/></symbol>
+    <symbol id="i-place" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/><path d="M9 10h.01M15 10h.01"/></symbol>
+    <symbol id="i-cancel" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2.5 2.5 0 0 0 0 5v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2.5 2.5 0 0 0 0-5z"/><path d="M10 10l4 4M14 10l-4 4"/></symbol>
+  </svg>
+
+  <div class="intro">
+    <h1>แบบ A · ไม่มีปุ่มบนรูป · ปุ่ม "จองสถานที่" + "ปฏิทินการจอง" ย้ายขึ้นแถบเมนู · ฟอนต์ + การ์ด 5 แบบ</h1>
+    <p>แต่ละแบบเปลี่ยน <b>ฟอนต์ทั้งเว็บ</b> และ <b>รูปแบบไอคอนในการ์ด 4 ช่อง</b> — สลับจับคู่ฟอนต์กับการ์ดคนละแบบได้</p>
+  </div>
+
+  <!-- ===== 1 ===== -->
+  <section class="variant">
+    <div class="label"><b>1</b><span>ฟอนต์ Kanit · การ์ดไอคอนเส้นในทรงมนเอียง</span><small>ใกล้เคียงเว็บตัวอย่างที่สุด</small></div>
+    <div class="sheet f-kanit c1">
+      <div class="hero"><div class="photo"></div><div class="shade"></div>
+        <div class="bar"><span class="logo"></span><span class="name">งานอาคารและสถานที่<small>PRINCESS CHULABHORN SCIENCE HIGH SCHOOL PATHUM THANI</small></span>
+          <nav><i class="on">หน้าแรก</i><span class="cta o">📝 จองสถานที่</span><span class="cta n">📅 ปฏิทินการจอง</span><i>บริการ ▾</i></nav><span class="admin">เข้าสู่ระบบ Admin</span></div>
+        <div class="text"><h2 class="title">ฝ่ายบริหาร<br>งานทั่วไป</h2><div class="sub">งานอาคารและสถานที่</div><div class="slogan-line"><p class="slogan">บริการจองสถานที่สำหรับจัดกิจกรรมทุกกิจกรรม เพื่อคณะครูและบุคลากรทุกท่าน</p></div></div>
+        <div class="dots"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="cards">
+        <div class="card o"><span class="num">01</span><div class="box"><svg class="ic"><use href="#i-book"/></svg></div><h4>จองสถานที่</h4><p>จองวันเดียวหรือหลายวัน ได้รหัสยกเลิกทันที</p><span class="go">เริ่มจอง →</span></div>
+        <div class="card n"><span class="num">02</span><div class="box"><svg class="ic"><use href="#i-search"/></svg></div><h4>ค้นหาห้องว่าง</h4><p>เลือกวันเวลา ระบบบอกห้องที่ว่างให้ทันที</p><span class="go">ค้นหา →</span></div>
+        <div class="card o"><span class="num">03</span><div class="box"><svg class="ic"><use href="#i-place"/></svg></div><h4>ข้อมูลสถานที่</h4><p>ความจุ อุปกรณ์ และตารางรายสัปดาห์</p><span class="go">ดูสถานที่ →</span></div>
+        <div class="card n"><span class="num">04</span><div class="box"><svg class="ic"><use href="#i-cancel"/></svg></div><h4>ยกเลิกการจอง</h4><p>ใช้รหัส 6 หลัก ยกเลิกได้ด้วยตนเอง</p><span class="go">ยกเลิก →</span></div>
+      </div>
+    </div>
+    <div class="fontline"><strong>Kanit</strong> — ตัวเหลี่ยมทันสมัย หัวข้อหนาแน่น เหมือนเว็บที่ส่งมา (ตอนนี้เว็บใช้ Kanit เฉพาะหัวข้อ เนื้อหายังเป็น Sarabun มีหัว) · การ์ด: ไอคอนเส้นสีขาวในกล่องมนเอียงสลับส้ม/น้ำเงิน</div>
+  </section>
+
+  <!-- ===== 2 ===== -->
+  <section class="variant">
+    <div class="label"><b>2</b><span>ฟอนต์ Prompt · การ์ดมีรูปสถานที่จริง</span><small>การ์ดดูเป็นภาพ ไม่ใช่แค่ไอคอน</small></div>
+    <div class="sheet f-prompt c2">
+      <div class="hero"><div class="photo"></div><div class="shade"></div>
+        <div class="bar"><span class="logo"></span><span class="name">งานอาคารและสถานที่<small>PRINCESS CHULABHORN SCIENCE HIGH SCHOOL PATHUM THANI</small></span>
+          <nav><i class="on">หน้าแรก</i><span class="cta o">📝 จองสถานที่</span><span class="cta n">📅 ปฏิทินการจอง</span><i>บริการ ▾</i></nav><span class="admin">เข้าสู่ระบบ Admin</span></div>
+        <div class="text"><h2 class="title">ฝ่ายบริหาร<br>งานทั่วไป</h2><div class="sub">งานอาคารและสถานที่</div><div class="slogan-line"><p class="slogan">บริการจองสถานที่สำหรับจัดกิจกรรมทุกกิจกรรม เพื่อคณะครูและบุคลากรทุกท่าน</p></div></div>
+        <div class="dots"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="cards">
+        <div class="card o"><div class="thumb" style="background-image:var(--p1)"><span class="num">01</span><span class="badge"><svg class="ic" style="width:24px;height:24px"><use href="#i-book"/></svg></span></div><h4>จองสถานที่</h4><p>จองวันเดียวหรือหลายวัน ได้รหัสยกเลิกทันที</p><span class="go">เริ่มจอง →</span></div>
+        <div class="card n"><div class="thumb" style="background-image:var(--p2)"><span class="num">02</span><span class="badge"><svg class="ic" style="width:24px;height:24px"><use href="#i-search"/></svg></span></div><h4>ค้นหาห้องว่าง</h4><p>เลือกวันเวลา ระบบบอกห้องที่ว่างให้ทันที</p><span class="go">ค้นหา →</span></div>
+        <div class="card o"><div class="thumb" style="background-image:var(--p3)"><span class="num">03</span><span class="badge"><svg class="ic" style="width:24px;height:24px"><use href="#i-place"/></svg></span></div><h4>ข้อมูลสถานที่</h4><p>ความจุ อุปกรณ์ และตารางรายสัปดาห์</p><span class="go">ดูสถานที่ →</span></div>
+        <div class="card n"><div class="thumb" style="background-image:var(--p4)"><span class="num">04</span><span class="badge"><svg class="ic" style="width:24px;height:24px"><use href="#i-cancel"/></svg></span></div><h4>ยกเลิกการจอง</h4><p>ใช้รหัส 6 หลัก ยกเลิกได้ด้วยตนเอง</p><span class="go">ยกเลิก →</span></div>
+      </div>
+    </div>
+    <div class="fontline"><strong>Prompt</strong> — กลมมน อ่านง่าย เป็นมิตร นิยมใช้ในเว็บราชการ/โรงเรียน · การ์ด: รูปสถานที่จริงด้านบน + ไอคอนวงกลมลอยทับขอบ</div>
+  </section>
+
+  <!-- ===== 3 ===== -->
+  <section class="variant">
+    <div class="label"><b>3</b><span>ฟอนต์ IBM Plex Sans Thai · การ์ดไอคอนกระจกซ้อนชั้น</span><small>ดูเป็นแอปยุคใหม่</small></div>
+    <div class="sheet f-plex c3">
+      <div class="hero"><div class="photo"></div><div class="shade"></div>
+        <div class="bar"><span class="logo"></span><span class="name">งานอาคารและสถานที่<small>PRINCESS CHULABHORN SCIENCE HIGH SCHOOL PATHUM THANI</small></span>
+          <nav><i class="on">หน้าแรก</i><span class="cta o">📝 จองสถานที่</span><span class="cta n">📅 ปฏิทินการจอง</span><i>บริการ ▾</i></nav><span class="admin">เข้าสู่ระบบ Admin</span></div>
+        <div class="text"><h2 class="title">ฝ่ายบริหาร<br>งานทั่วไป</h2><div class="sub">งานอาคารและสถานที่</div><div class="slogan-line"><p class="slogan">บริการจองสถานที่สำหรับจัดกิจกรรมทุกกิจกรรม เพื่อคณะครูและบุคลากรทุกท่าน</p></div></div>
+        <div class="dots"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="cards">
+        <div class="card o"><span class="num">01</span><div class="glassic"><span><svg class="ic"><use href="#i-book"/></svg></span></div><h4>จองสถานที่</h4><p>จองวันเดียวหรือหลายวัน ได้รหัสยกเลิกทันที</p><span class="go">เริ่มจอง →</span></div>
+        <div class="card n"><span class="num">02</span><div class="glassic"><span><svg class="ic"><use href="#i-search"/></svg></span></div><h4>ค้นหาห้องว่าง</h4><p>เลือกวันเวลา ระบบบอกห้องที่ว่างให้ทันที</p><span class="go">ค้นหา →</span></div>
+        <div class="card o"><span class="num">03</span><div class="glassic"><span><svg class="ic"><use href="#i-place"/></svg></span></div><h4>ข้อมูลสถานที่</h4><p>ความจุ อุปกรณ์ และตารางรายสัปดาห์</p><span class="go">ดูสถานที่ →</span></div>
+        <div class="card n"><span class="num">04</span><div class="glassic"><span><svg class="ic"><use href="#i-cancel"/></svg></span></div><h4>ยกเลิกการจอง</h4><p>ใช้รหัส 6 หลัก ยกเลิกได้ด้วยตนเอง</p><span class="go">ยกเลิก →</span></div>
+      </div>
+    </div>
+    <div class="fontline"><strong>IBM Plex Sans Thai</strong> — สะอาด เป็นทางการ ดูเทคโนโลยี · การ์ด: ไอคอนกระจกฝ้าวางซ้อนบนแผ่นสีเอียง (ส้ม/น้ำเงิน)</div>
+  </section>
+
+  <!-- ===== 4 ===== -->
+  <section class="variant">
+    <div class="label"><b>4</b><span>ฟอนต์ Anuphan · การ์ดไอคอนใหญ่จาง ๆ มุมการ์ด</span><small>มินิมอล เรียบหรู</small></div>
+    <div class="sheet f-anu c4">
+      <div class="hero"><div class="photo"></div><div class="shade"></div>
+        <div class="bar"><span class="logo"></span><span class="name">งานอาคารและสถานที่<small>PRINCESS CHULABHORN SCIENCE HIGH SCHOOL PATHUM THANI</small></span>
+          <nav><i class="on">หน้าแรก</i><span class="cta o">📝 จองสถานที่</span><span class="cta n">📅 ปฏิทินการจอง</span><i>บริการ ▾</i></nav><span class="admin">เข้าสู่ระบบ Admin</span></div>
+        <div class="text"><h2 class="title">ฝ่ายบริหาร<br>งานทั่วไป</h2><div class="sub">งานอาคารและสถานที่</div><div class="slogan-line"><p class="slogan">บริการจองสถานที่สำหรับจัดกิจกรรมทุกกิจกรรม เพื่อคณะครูและบุคลากรทุกท่าน</p></div></div>
+        <div class="dots"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="cards">
+        <div class="card o"><span class="tag">01 · จอง</span><h4><span class="small"><svg class="ic"><use href="#i-book"/></svg></span>จองสถานที่</h4><p>จองวันเดียวหรือหลายวัน ได้รหัสยกเลิกทันที</p><span class="go">เริ่มจอง →</span><span class="big"><svg class="ic"><use href="#i-book"/></svg></span></div>
+        <div class="card n"><span class="tag">02 · ค้นหา</span><h4><span class="small"><svg class="ic"><use href="#i-search"/></svg></span>ค้นหาห้องว่าง</h4><p>เลือกวันเวลา ระบบบอกห้องที่ว่างให้ทันที</p><span class="go">ค้นหา →</span><span class="big"><svg class="ic"><use href="#i-search"/></svg></span></div>
+        <div class="card o"><span class="tag">03 · สถานที่</span><h4><span class="small"><svg class="ic"><use href="#i-place"/></svg></span>ข้อมูลสถานที่</h4><p>ความจุ อุปกรณ์ และตารางรายสัปดาห์</p><span class="go">ดูสถานที่ →</span><span class="big"><svg class="ic"><use href="#i-place"/></svg></span></div>
+        <div class="card n"><span class="tag">04 · ยกเลิก</span><h4><span class="small"><svg class="ic"><use href="#i-cancel"/></svg></span>ยกเลิกการจอง</h4><p>ใช้รหัส 6 หลัก ยกเลิกได้ด้วยตนเอง</p><span class="go">ยกเลิก →</span><span class="big"><svg class="ic"><use href="#i-cancel"/></svg></span></div>
+      </div>
+    </div>
+    <div class="fontline"><strong>Anuphan</strong> — เส้นบางสวย ทันสมัย อ่านสบายตา · การ์ด: แถบสีด้านซ้าย + ไอคอนเส้นใหญ่จาง ๆ ที่มุมการ์ด + ป้ายหมายเลข</div>
+  </section>
+
+  <!-- ===== 5 ===== -->
+  <section class="variant">
+    <div class="label"><b>5</b><span>ฟอนต์ Bai Jamjuree · การ์ดไอคอนวงโคจรหมุน</span><small>มีชีวิตชีวา ขยับตลอด</small></div>
+    <div class="sheet f-bai c5">
+      <div class="hero"><div class="photo"></div><div class="shade"></div>
+        <div class="bar"><span class="logo"></span><span class="name">งานอาคารและสถานที่<small>PRINCESS CHULABHORN SCIENCE HIGH SCHOOL PATHUM THANI</small></span>
+          <nav><i class="on">หน้าแรก</i><span class="cta o">📝 จองสถานที่</span><span class="cta n">📅 ปฏิทินการจอง</span><i>บริการ ▾</i></nav><span class="admin">เข้าสู่ระบบ Admin</span></div>
+        <div class="text"><h2 class="title">ฝ่ายบริหาร<br>งานทั่วไป</h2><div class="sub">งานอาคารและสถานที่</div><div class="slogan-line"><p class="slogan">บริการจองสถานที่สำหรับจัดกิจกรรมทุกกิจกรรม เพื่อคณะครูและบุคลากรทุกท่าน</p></div></div>
+        <div class="dots"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="cards">
+        <div class="card o"><span class="num">STEP 01</span><div class="orbit"><span><svg class="ic" style="width:24px;height:24px"><use href="#i-book"/></svg></span></div><h4>จองสถานที่</h4><p>จองวันเดียวหรือหลายวัน ได้รหัสยกเลิกทันที</p><span class="go">เริ่มจอง →</span></div>
+        <div class="card n"><span class="num">STEP 02</span><div class="orbit"><span><svg class="ic" style="width:24px;height:24px"><use href="#i-search"/></svg></span></div><h4>ค้นหาห้องว่าง</h4><p>เลือกวันเวลา ระบบบอกห้องที่ว่างให้ทันที</p><span class="go">ค้นหา →</span></div>
+        <div class="card o"><span class="num">STEP 03</span><div class="orbit"><span><svg class="ic" style="width:24px;height:24px"><use href="#i-place"/></svg></span></div><h4>ข้อมูลสถานที่</h4><p>ความจุ อุปกรณ์ และตารางรายสัปดาห์</p><span class="go">ดูสถานที่ →</span></div>
+        <div class="card n"><span class="num">STEP 04</span><div class="orbit"><span><svg class="ic" style="width:24px;height:24px"><use href="#i-cancel"/></svg></span></div><h4>ยกเลิกการจอง</h4><p>ใช้รหัส 6 หลัก ยกเลิกได้ด้วยตนเอง</p><span class="go">ยกเลิก →</span></div>
+      </div>
+    </div>
+    <div class="fontline"><strong>Bai Jamjuree</strong> — เหลี่ยมเท่ ดูเทคโนโลยี/วิทยาศาสตร์ เข้ากับโรงเรียนวิทยาศาสตร์ · การ์ด: ไอคอนในวงกลมมีวงเส้นประหมุนและจุดโคจร</div>
+  </section>
+</body>
+</html>

@@ -1604,6 +1604,7 @@ function showPage(page) {
   document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
 
   const map = {
+    home:     { page: 'pageHome',     nav: 'navHome'     },
     booking:  { page: 'pageBooking',  nav: 'navBooking'  },
     calendar: { page: 'pageCalendar', nav: 'navCalendar' },
     venues:   { page: 'pageVenues',   nav: 'navVenues'   },
@@ -1620,10 +1621,13 @@ function showPage(page) {
     return;
   }
 
-  const target = map[page] || map['booking'];
+  const target = map[page] || map['home'];
   document.getElementById(target.page).classList.remove('hidden');
   const navEl = document.getElementById(target.nav);
   if (navEl) navEl.classList.add('active');
+
+  // หน้าตาเว็บแบบใหม่ (home.js): ปิดเมนูมือถือ, ไฮไลต์เมนู "บริการ", ย้ายแถบประกาศ, เลื่อนขึ้นบนสุด
+  if (typeof onPageShown === 'function') onPageShown(map[page] ? page : 'home', navEl);
 
   if (page === 'calendar') {
     renderCalendar();
@@ -1683,7 +1687,8 @@ function doAdminLogin() {
       btnAdmin.innerHTML = `
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>Admin (ออกจากระบบ)`;
+        </svg>ออกจากระบบ`;
+      btnAdmin.title = 'ออกจากระบบ Admin';
       btnAdmin.onclick = doAdminLogout;
     }
     setTimeout(() => {
@@ -1707,9 +1712,10 @@ function doAdminLogout() {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
       </svg>เข้าสู่ระบบ Admin`;
+    btnAdmin.title = '';
     btnAdmin.onclick = showAdminLogin;
   }
-  showPage('booking');
+  showPage('home');
   showToast('ออกจากระบบ Admin แล้ว', 'warning');
 }
 window.adminLogout = doAdminLogout;
