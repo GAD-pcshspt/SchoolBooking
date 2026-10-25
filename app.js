@@ -1383,32 +1383,71 @@ async function fetchGoogleSheetsBookings(silent = false) {
   return false;
 }
 
+function toBookingRecord(b) {
+  return {
+    id: String(b.id),
+    created_at: b.createdAt || new Date().toISOString(),
+    full_name: b.fullName || '',
+    position: b.position || '',
+    department: b.department || '',
+    room: b.room || '',
+    rooms: b.rooms || [],
+    purpose: b.purpose || '',
+    student_count: b.studentCount || '',
+    grade: b.grade || '',
+    booking_date: b.bookingDate || '',
+    start_time: b.startTime || '',
+    end_time: b.endTime || '',
+    room_layout: b.roomLayout || '',
+    status: b.status || 'approved'
+  };
+}
+
+// error จาก trigger กันจองซ้ำในฐานข้อมูล (supabase/sql/prevent-double-booking.sql)
+function isBookingConflictError(err) {
+  return Boolean(err && (err.code === '23P01' || /booking_conflict/.test(err.message || '')));
+}
+
+// บันทึกการจองใหม่ขึ้น Supabase แบบ insert ทั้งชุดในคำสั่งเดียว (ไม่ทับรายการของคนอื่น ได้ทั้งหมดหรือไม่ได้เลย)
+// ถ้าเลข id ชนกับเครื่องที่จองพร้อมกัน จะดึงข้อมูลล่าสุดแล้วออกเลขใหม่ให้เอง
+// คืนค่า { ok: true } | { ok: false, reason: 'conflict' | 'error' }
+async function insertBookingsToCloud(list) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let error = null;
+    try {
+      updateCloudStatusBadge('syncing', 'กำลังบันทึกข้อมูล...');
+      ({ error } = await supabaseClient.from('bookings').insert(list.map(toBookingRecord)));
+    } catch (err) {
+      error = err;
+    }
+    if (!error) {
+      updateCloudStatusBadge(true, 'บันทึกแล้ว');
+      return { ok: true };
+    }
+    if (isBookingConflictError(error)) return { ok: false, reason: 'conflict' };
+    if (error.code !== '23505') {
+      console.warn('⚠️ Supabase [insert] error:', error);
+      updateCloudStatusBadge(false, 'บันทึกข้อมูลไม่สำเร็จ');
+      return { ok: false, reason: 'error' };
+    }
+    await fetchGoogleSheetsBookings(true);
+    let next = getNextId();
+    list.forEach(b => { b.id = next++; });
+  }
+  return { ok: false, reason: 'error' };
+}
+
+let lastCloudError = null;
+
 async function sendGoogleSheetsAction(action, payload = {}) {
   // 1. ส่งไปยัง Supabase
   if (checkIsSupabaseActive()) {
+    lastCloudError = null;
     try {
       updateCloudStatusBadge('syncing', 'กำลังบันทึกข้อมูล...');
-      
+
       if (action === 'create') {
-        const b = payload.booking;
-        const record = {
-          id: String(b.id),
-          created_at: b.createdAt || new Date().toISOString(),
-          full_name: b.fullName || '',
-          position: b.position || '',
-          department: b.department || '',
-          room: b.room || '',
-          rooms: b.rooms || [],
-          purpose: b.purpose || '',
-          student_count: b.studentCount || '',
-          grade: b.grade || '',
-          booking_date: b.bookingDate || '',
-          start_time: b.startTime || '',
-          end_time: b.endTime || '',
-          room_layout: b.roomLayout || '',
-          status: b.status || 'approved'
-        };
-        const { error } = await supabaseClient.from('bookings').upsert(record);
+        const { error } = await supabaseClient.from('bookings').upsert(toBookingRecord(payload.booking));
         if (error) throw error;
         console.log('✅ Supabase [create] upserted successfully!');
         updateCloudStatusBadge(true, 'บันทึกแล้ว');
@@ -1455,6 +1494,7 @@ async function sendGoogleSheetsAction(action, payload = {}) {
         return true;
       }
     } catch (err) {
+      lastCloudError = err;
       console.warn(`⚠️ Supabase [${action}] sync error:`, err);
       updateCloudStatusBadge(false, 'บันทึกข้อมูลไม่สำเร็จ');
       return false;
@@ -2183,28 +2223,32 @@ async function submitBooking(event) {
   // Conflict check with live data
   const conflict = hasConflict(newBooking);
   if (conflict) {
-    const c = conflict.conflictWith;
-    document.getElementById('conflictDetail').innerHTML = `
-      <div style="margin-bottom:10px;font-size:1.05rem;font-weight:700;color:#dc2626;">
-        ⚠️ ไม่สามารถจองได้! มีการจองซ้ำในห้องต่อไปนี้:
-      </div>
-      <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:10px 14px;border-radius:8px;margin-bottom:12px;">
-        <div style="font-weight:800;color:#991b1b;font-size:0.95rem;">
-          📍 ห้องที่ซ้ำ: ${conflict.conflictingRooms.join(', ')}
-        </div>
-      </div>
-      <div style="line-height:2;font-size:0.9rem;color:#374151;">
-        <div>📅 วันที่: <strong>${formatDateThai(c.bookingDate)}</strong></div>
-        <div>⏰ เวลาที่ถูกจองแล้ว: <strong style="color:#ea580c;">${c.startTime} – ${c.endTime} น.</strong></div>
-        <div>👤 ผู้จองเดิม: <strong>${c.fullName}</strong> (${c.position || '–'}) — ${c.department}</div>
-        <div>🎯 วัตถุประสงค์: ${c.purpose}</div>
-      </div>
-      <div style="margin-top:14px;padding-top:10px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:0.85rem;">
-        💡 คำแนะนำ: กรุณาเปลี่ยนช่วงเวลา หรือยกเลิกการเลือกห้องที่ติดซ้ำ
-      </div>
-    `;
-    document.getElementById('conflictModal').classList.remove('hidden');
+    showConflictModal(conflict);
     return;
+  }
+
+  // Supabase: บันทึกขึ้นฐานข้อมูลก่อน ฐานข้อมูลตรวจซ้ำอีกชั้น (กันกดจองพร้อมกันหลายเครื่อง)
+  if (checkIsSupabaseActive()) {
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '☁️ กำลังบันทึกการจอง...';
+    }
+    const res = await insertBookingsToCloud([newBooking]);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
+    if (!res.ok) {
+      if (res.reason === 'conflict') {
+        await fetchGoogleSheetsBookings(true);
+        const latest = hasConflict(newBooking);
+        if (latest) showConflictModal(latest);
+        else showToast('ช่วงเวลานี้เพิ่งถูกจองไปเมื่อสักครู่ กรุณาเลือกเวลาหรือห้องอื่น', 'error');
+      } else {
+        showToast('บันทึกการจองไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง', 'error');
+      }
+      return;
+    }
   }
 
   // Save locally
@@ -2224,8 +2268,10 @@ async function submitBooking(event) {
     });
   }
 
-  // Sync to Google Sheets
-  if (checkIsGoogleSheetsConfigured()) {
+  if (checkIsSupabaseActive()) {
+    await fetchGoogleSheetsBookings(true);
+  } else if (checkIsGoogleSheetsConfigured()) {
+    // Sync to Google Sheets
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = '☁️ กำลังบันทึกข้อมูลไปยังคลาวด์...';
@@ -2251,6 +2297,30 @@ async function submitBooking(event) {
   clearForm();
   renderCalendar();
   showToast('ยืนยันการจองเรียบร้อยแล้ว ✅', 'success');
+}
+
+function showConflictModal(conflict) {
+  const c = conflict.conflictWith;
+  document.getElementById('conflictDetail').innerHTML = `
+      <div style="margin-bottom:10px;font-size:1.05rem;font-weight:700;color:#dc2626;">
+        ⚠️ ไม่สามารถจองได้! มีการจองซ้ำในห้องต่อไปนี้:
+      </div>
+      <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:10px 14px;border-radius:8px;margin-bottom:12px;">
+        <div style="font-weight:800;color:#991b1b;font-size:0.95rem;">
+          📍 ห้องที่ซ้ำ: ${conflict.conflictingRooms.join(', ')}
+        </div>
+      </div>
+      <div style="line-height:2;font-size:0.9rem;color:#374151;">
+        <div>📅 วันที่: <strong>${formatDateThai(c.bookingDate)}</strong></div>
+        <div>⏰ เวลาที่ถูกจองแล้ว: <strong style="color:#ea580c;">${c.startTime} – ${c.endTime} น.</strong></div>
+        <div>👤 ผู้จองเดิม: <strong>${c.fullName}</strong> (${c.position || '–'}) — ${c.department}</div>
+        <div>🎯 วัตถุประสงค์: ${c.purpose}</div>
+      </div>
+      <div style="margin-top:14px;padding-top:10px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:0.85rem;">
+        💡 คำแนะนำ: กรุณาเปลี่ยนช่วงเวลา หรือยกเลิกการเลือกห้องที่ติดซ้ำ
+      </div>
+  `;
+  document.getElementById('conflictModal').classList.remove('hidden');
 }
 
 // ============================================================
@@ -3130,12 +3200,39 @@ async function saveEdit() {
     showToast('เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น', 'error'); return;
   }
 
-  const conflict = hasConflict(updated, id);
-  if (conflict) {
+  const showEditConflict = conflict => {
     const c = conflict.conflictWith;
     showToast(`มีการจองซ้ำห้อง ${conflict.conflictingRooms.join(', ')} กับ "${c.fullName}" เวลา ${c.startTime}–${c.endTime} น.`, 'error');
+  };
+
+  // Supabase: ตรวจกับข้อมูลล่าสุด แล้วบันทึกขึ้นฐานข้อมูลก่อน (ฐานข้อมูลตรวจซ้ำอีกชั้น)
+  if (checkIsSupabaseActive()) {
+    await fetchGoogleSheetsBookings(true);
+    const conflict = hasConflict(updated, id);
+    if (conflict) { showEditConflict(conflict); return; }
+
+    showToast('กำลังบันทึกการแก้ไขไปยังฐานข้อมูล...', 'info');
+    const ok = await sendGoogleSheetsAction('update', { booking: updated });
+    await fetchGoogleSheetsBookings(true);
+    if (!ok) {
+      if (isBookingConflictError(lastCloudError)) {
+        const latest = hasConflict(updated, id);
+        if (latest) showEditConflict(latest);
+        else showToast('ช่วงเวลานี้เพิ่งถูกจองไปเมื่อสักครู่ กรุณาเลือกเวลาหรือห้องอื่น', 'error');
+      } else {
+        showToast('บันทึกการแก้ไขไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง', 'error');
+      }
+      return;
+    }
+    renderAdmin();
+    renderCalendar();
+    closeEdit();
+    showToast('แก้ไขการจองสำเร็จ ✅', 'success');
     return;
   }
+
+  const conflict = hasConflict(updated, id);
+  if (conflict) { showEditConflict(conflict); return; }
 
   bookings[idx] = updated;
   saveBookings(bookings);

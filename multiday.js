@@ -473,30 +473,48 @@ async function submitMultiDayBooking(base) {
   }
 
   const createdAt = new Date().toISOString();
+  let nextId = getNextId();
+  const created = items.map(({ eff }) => ({
+    id: nextId++,
+    createdAt,
+    fullName: base.fullName,
+    position: base.position,
+    department: base.department,
+    room: eff.room,
+    rooms: eff.rooms,
+    purpose: eff.purpose,
+    studentCount: eff.studentCount,
+    grade: eff.grade,
+    bookingDate: eff.bookingDate,
+    startTime: eff.startTime,
+    endTime: eff.endTime,
+    roomLayout: eff.roomLayout,
+    status: 'approved',
+  }));
+
+  // Supabase: บันทึกทุกวันในคำสั่งเดียว ได้ครบทุกวันหรือไม่ได้เลย (ฐานข้อมูลตรวจซ้ำอีกชั้น)
+  if (checkIsSupabaseActive()) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `☁️ กำลังบันทึกการจอง ${created.length} วัน...`;
+    const res = await insertBookingsToCloud(created);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnHtml;
+    if (!res.ok) {
+      if (res.reason === 'conflict') {
+        await fetchGoogleSheetsBookings(true);
+        renderMultiDayPanel();
+        document.getElementById('multiDayPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        showToast('มีบางวันเพิ่งถูกจองไปเมื่อสักครู่ กรุณาตรวจรายการวันแล้วแก้ไขก่อนจองอีกครั้ง', 'error');
+      } else {
+        showToast('บันทึกการจองไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง', 'error');
+      }
+      return;
+    }
+  }
+
   const bookings = getBookings();
-  const created = items.map(({ eff }) => {
-    const b = {
-      id: getNextId(),
-      createdAt,
-      fullName: base.fullName,
-      position: base.position,
-      department: base.department,
-      room: eff.room,
-      rooms: eff.rooms,
-      purpose: eff.purpose,
-      studentCount: eff.studentCount,
-      grade: eff.grade,
-      bookingDate: eff.bookingDate,
-      startTime: eff.startTime,
-      endTime: eff.endTime,
-      roomLayout: eff.roomLayout,
-      status: 'approved',
-    };
-    removeDeletedId(b.id);
-    bookings.push(b);
-    saveBookings(bookings);   // บันทึกทีละรายการ เพื่อให้ getNextId() ได้เลขถัดไปถูกต้อง
-    return b;
-  });
+  created.forEach(b => { removeDeletedId(b.id); bookings.push(b); });
+  saveBookings(bookings);
   state.lastBookingId = created[0].id;
   state.lastBookingIds = created.map(b => b.id);
 
@@ -506,7 +524,9 @@ async function submitMultiDayBooking(base) {
     grade: tpl.grade, startTime: tpl.startTime, endTime: tpl.endTime, roomLayout: tpl.roomLayout,
   });
 
-  if (checkIsGoogleSheetsConfigured()) {
+  if (checkIsSupabaseActive()) {
+    await fetchGoogleSheetsBookings(true);
+  } else if (checkIsGoogleSheetsConfigured()) {
     submitBtn.disabled = true;
     let failed = 0;
     for (let i = 0; i < created.length; i++) {
