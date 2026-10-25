@@ -2552,37 +2552,8 @@ function renderCalendarList() {
       return;
     }
 
-    const d = new Date(calListSelectedDate);
     const items = dayBookings.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    const dow = isNaN(d.getTime()) ? '' : THAI_DAYS[d.getDay()];
-    const dateFormatted = formatDateThai(calListSelectedDate);
-
-    container.innerHTML = `
-      <div class="cal-list-day-group">
-        <div class="cal-list-day-header">
-          <div class="cal-list-day-title">
-            <span>📅</span>
-            <strong>${dow ? dow + 'ที่ ' : ''}${dateFormatted}</strong>
-          </div>
-          <span class="cal-list-day-count">${items.length} รายการ</span>
-        </div>
-        <div class="cal-list-day-items">
-          ${items.map(b => `
-            <div class="cal-list-card ${b.status}" onclick="viewBookingDetail(${b.id})">
-              <div class="cal-list-card-top">
-                <span class="cal-list-room">📍 ${escapeHtml(b.room)}</span>
-                <span class="status-badge ${b.status}">${statusLabel(b.status)}</span>
-              </div>
-              <div class="cal-list-card-meta">
-                <span class="cal-list-time">⏰ ${b.startTime}–${b.endTime} น.</span>
-                <span class="cal-list-user">👤 ${escapeHtml(b.fullName)} · ${escapeHtml(b.department || '-')}</span>
-              </div>
-              ${b.purpose ? `<div class="cal-list-purpose">🎯 ${escapeHtml(b.purpose)}</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
+    container.innerHTML = calListGroupHtml(calListSelectedDate, items, 0);
     return;
   }
 
@@ -2622,43 +2593,69 @@ function renderCalendarList() {
   });
 
   const sortedDates = Object.keys(groups).sort();
-  let html = '';
+  container.innerHTML = sortedDates.map((dateStr, i) =>
+    calListGroupHtml(dateStr, groups[dateStr].sort((a, b) => a.startTime.localeCompare(b.startTime)), i)
+  ).join('');
+}
 
-  sortedDates.forEach(dateStr => {
-    const d = new Date(dateStr);
-    const items = groups[dateStr].sort((a, b) => a.startTime.localeCompare(b.startTime));
-    const dow = isNaN(d.getTime()) ? '' : THAI_DAYS[d.getDay()];
-    const dateFormatted = formatDateThai(dateStr);
+// กลุ่มรายการจองของ 1 วัน (สไตล์เดียวกับ Live Board หน้าแรก)
+const THAI_DAY_NAMES = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+const THAI_MONTHS_SHORT_LIST = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
-    html += `
-      <div class="cal-list-day-group">
-        <div class="cal-list-day-header">
-          <div class="cal-list-day-title">
-            <span>📅</span>
-            <strong>${dow ? dow + 'ที่ ' : ''}${dateFormatted}</strong>
-          </div>
-          <span class="cal-list-day-count">${items.length} รายการ</span>
+function calListGroupHtml(dateStr, items, groupIndex) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const todayStrLocal = toDateStr(new Date());
+  const isToday = dateStr === todayStrLocal;
+  const isPast = dateStr < todayStrLocal;
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const toMin = t => { const [h, mm] = String(t || '').split(':').map(Number); return h * 60 + (mm || 0); };
+
+  const rows = items.map((b, i) => {
+    let state = isPast ? 'done' : 'upcoming';
+    let pill = '';
+    let progress = '';
+    const s = toMin(b.startTime), e = toMin(b.endTime);
+    if (b.status === 'cancelled') {
+      state = 'cancelled';
+      pill = '<span class="lb-pill cancelled">ยกเลิก</span>';
+    } else if (isToday && nowMin >= s && nowMin < e) {
+      state = 'live';
+      pill = '<span class="lb-pill live"><span class="live-dot"></span>กำลังใช้งาน</span>';
+      progress = `<div class="lb-progress"><i style="width:${Math.round(((nowMin - s) / (e - s)) * 100)}%"></i></div>`;
+    } else if (isPast || (isToday && nowMin >= e)) {
+      state = 'done';
+      pill = '<span class="lb-pill done">เสร็จแล้ว</span>';
+    } else {
+      pill = '<span class="lb-pill soon">จองแล้ว</span>';
+    }
+    const who = [b.fullName, b.department].filter(Boolean).join(' · ');
+    return `
+      <button type="button" class="lb-item ${state}" style="--i:${i}" onclick="viewBookingDetail('${escapeHtml(String(b.id))}')">
+        <div class="lb-time"><b>${escapeHtml(b.startTime)}</b><small>${escapeHtml(b.endTime)}</small></div>
+        <div class="lb-rail"><span></span></div>
+        <div class="lb-body">
+          <div class="lb-room">📍 ${escapeHtml(b.room)}</div>
+          <div class="lb-purpose">${escapeHtml(b.purpose || '–')}</div>
+          <div class="lb-who">👤 ${escapeHtml(who)}${b.studentCount ? ` · ${escapeHtml(b.studentCount)} คน` : ''}</div>
+          ${progress}
         </div>
-        <div class="cal-list-day-items">
-          ${items.map(b => `
-            <div class="cal-list-card ${b.status}" onclick="viewBookingDetail(${b.id})">
-              <div class="cal-list-card-top">
-                <span class="cal-list-room">📍 ${escapeHtml(b.room)}</span>
-                <span class="status-badge ${b.status}">${statusLabel(b.status)}</span>
-              </div>
-              <div class="cal-list-card-meta">
-                <span class="cal-list-time">⏰ ${b.startTime}–${b.endTime} น.</span>
-                <span class="cal-list-user">👤 ${escapeHtml(b.fullName)} · ${escapeHtml(b.department || '-')}</span>
-              </div>
-              ${b.purpose ? `<div class="cal-list-purpose">🎯 ${escapeHtml(b.purpose)}</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  });
+        <div class="lb-side">${pill}</div>
+      </button>`;
+  }).join('');
 
-  container.innerHTML = html;
+  return `
+    <section class="cl-group ${isToday ? 'is-today' : ''} ${isPast ? 'is-past' : ''}" style="--g:${groupIndex}">
+      <header class="cl-head">
+        <div class="cl-date"><b>${d}</b><small>${THAI_MONTHS_SHORT_LIST[m - 1]}</small></div>
+        <div class="cl-title">
+          <strong>วัน${THAI_DAY_NAMES[date.getDay()]}${isToday ? '<em>วันนี้</em>' : ''}</strong>
+          <span>${d} ${THAI_MONTHS[m - 1]} ${y + 543}</span>
+        </div>
+        <span class="cl-count">${items.length} รายการ</span>
+      </header>
+      <div class="lb-list animate cl-items">${rows}</div>
+    </section>`;
 }
 
 function createDayCell(date, bookings, today, otherMonth) {
@@ -2718,7 +2715,7 @@ function createDayCell(date, bookings, today, otherMonth) {
           chip.className = `cal-booking-chip ${b.status}`;
           chip.innerHTML = `
             <span class="chip-room">📍 ${escapeHtml(b.room)}</span>
-            <span class="chip-meta">⏰ ${b.startTime}–${b.endTime} น. · 👤 ${escapeHtml(b.fullName)}</span>
+            <span class="chip-meta">⏰ ${b.startTime}–${b.endTime} น.</span>
           `;
           chip.title = `📍 ${b.room}\n👤 ${b.fullName} (${b.position || '–'}) — ${b.department}\n⏰ ${b.startTime}–${b.endTime} น.\n🎯 ${b.purpose}\n\n(แตะเพื่อดูรายละเอียดเต็มและพิมพ์ใบจอง)`;
           chip.onclick = (e) => {

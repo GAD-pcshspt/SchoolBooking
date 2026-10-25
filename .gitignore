@@ -6,3 +6,6 @@ package.json
 package-lock.json
 # SQL ที่มีรหัสลับ (รันใน Supabase SQL Editor เท่านั้น ห้ามขึ้น GitHub)
 supabase/sql/*.local.sql
+# ไฟล์ทำงานในเครื่อง ไม่ใช้บนเว็บ (ตัวอย่างดีไซน์ / รูปต้นฉบับขนาดใหญ่ — เว็บใช้ images/places แทน)
+ตัวอย่างดีไซน์/
+รวมรูปสถานที่/

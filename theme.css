@@ -1403,3 +1403,138 @@ h1, h2, h3, h4, h5,
   mask-image: linear-gradient(180deg, #000 55%, transparent 92%);
 }
 .home-band::before { background: radial-gradient(ellipse 45% 55% at 85% 38%, rgba(249, 115, 22, .2), transparent 70%); }
+/* ============================================================
+   V5: Live Board มินิมอล · มุมมองรายการปฏิทินแบบ Live Board
+       · ด้านล่างเว็บมินิมอล · ตารางเดือนบนมือถือแคบลง
+   ============================================================ */
+
+/* ---------- Live Board: นาฬิกาเล็ก สถิติ 3 ช่องแบบมินิมอล ---------- */
+.lb-head { align-items: center; margin-bottom: 18px; }
+.lb-clock {
+  font-size: 1.05rem;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: var(--head-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.lb-clock::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--brand-orange); box-shadow: 0 0 0 4px rgba(249, 115, 22, .18); }
+#pageHome .lb-clock { background: #f1f5f9; color: var(--head-ink); }
+.lb-stats { grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+#pageHome .lb-stat,
+.lb-stat {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #edf1f7;
+  color: var(--head-ink);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.lb-stat::after { display: none; }
+.lb-stat b { font-size: 1.9rem; font-weight: 600; color: #2563eb; }
+.lb-stat span { font-size: .86rem; color: var(--muted); opacity: 1; }
+#pageHome .lb-stat.live { background: #fff7ed; border-color: #fde3c8; }
+.lb-stat.live b { color: var(--brand-orange-2); }
+#pageHome .lb-stat.closed { background: #f8fafc; }
+.lb-stat.closed b { color: #94a3b8; }
+
+/* ---------- ปฏิทิน มุมมองรายการ: กลุ่มวันแบบการ์ด + รายการแบบ Live Board ---------- */
+.calendar-list-container { display: flex; flex-direction: column; gap: 16px; }
+.cl-group {
+  background: #fff;
+  border: 1px solid rgba(15, 36, 68, .06);
+  border-radius: 24px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 12px 32px rgba(15, 36, 68, .06);
+  animation: clIn .6s var(--ease-out) both;
+  animation-delay: calc(min(var(--g, 0), 8) * 70ms);
+}
+@keyframes clIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.cl-group.is-today { border-color: #fdba74; box-shadow: 0 14px 36px rgba(249, 115, 22, .12); }
+.cl-group.is-past { opacity: .72; }
+.cl-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.cl-date {
+  width: 54px;
+  height: 58px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #24365f, var(--band-top, #0f1d42));
+  color: #fff;
+  line-height: 1;
+}
+.cl-date b { font-family: var(--font-head); font-size: 1.45rem; font-weight: 600; }
+.cl-date small { font-size: .7rem; opacity: .8; margin-top: 4px; }
+.is-today .cl-date { background: linear-gradient(160deg, #f97316, #ea580c); }
+.cl-title { display: flex; flex-direction: column; min-width: 0; }
+.cl-title strong { font-family: var(--font-head); font-weight: 600; color: var(--head-ink); font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+.cl-title strong em { font-style: normal; font-family: var(--font-body); font-size: .7rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--brand-orange); color: #fff; }
+.cl-title span { font-size: .85rem; color: var(--muted); }
+.cl-count { margin-left: auto; font-size: .8rem; font-weight: 500; color: #2563eb; background: #eff6ff; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+.cl-items { min-height: 0; }
+.lb-item.cancelled { opacity: .6; }
+.lb-item.cancelled .lb-room, .lb-item.cancelled .lb-purpose { text-decoration: line-through; }
+.lb-pill.cancelled { background: #fee2e2; color: #b91c1c; }
+.cal-list-filter-bar { border-radius: 20px; }
+
+/* ---------- ตารางเดือนบนมือถือ: คอลัมน์แคบลง เลื่อนน้อยลง ---------- */
+@media (max-width: 768px) {
+  .cal-weekdays, .cal-days { grid-template-columns: repeat(7, minmax(88px, 1fr)) !important; }
+  .calendar-grid { min-width: 640px !important; }
+  .cal-booking-chip { padding: 3px 5px; }
+  .cal-booking-chip .chip-room { font-size: .7rem; }
+  .cal-booking-chip .chip-meta { font-size: .64rem; }
+}
+
+/* ---------- ด้านล่างเว็บ: มินิมอล ตัวเล็กลง เครดิตเด่นขึ้น ---------- */
+.site-footer { padding: 22px 16px 20px; }
+.site-footer .footer-container { gap: 12px 24px; }
+.footer-logo { width: 40px; height: 40px; }
+.footer-brand { gap: 12px; min-width: 0; }
+.site-footer .footer-dept-name { font-size: .9rem; line-height: 1.35; }
+.site-footer .footer-school-name { font-size: .78rem; line-height: 1.4; white-space: normal; word-break: normal; }
+.footer-links { gap: 4px 18px; }
+.footer-links a { font-size: .82rem; }
+.site-footer .footer-dev-credit {
+  padding: 7px 16px;
+  border: none;
+  background: linear-gradient(135deg, #f97316, #ea580c 55%, #2563eb);
+  box-shadow: 0 8px 20px rgba(234, 88, 12, .25);
+  font-size: .8rem;
+}
+.site-footer .footer-dev-text { color: #fff; font-weight: 600; letter-spacing: .01em; }
+.site-footer .footer-dev-icon { filter: brightness(1.2); }
+/* iPad: เครดิตตกไปแถวใหม่ ให้อยู่กลาง */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .site-footer .footer-container { flex-wrap: wrap; justify-content: space-between; }
+  .site-footer .footer-dev-credit { margin: 4px auto 0; }
+}
+
+@media (max-width: 640px) {
+  .site-footer { padding: 22px 14px 24px; text-align: center; }
+  .site-footer .footer-container { flex-direction: column; align-items: center; gap: 14px; }
+  .footer-brand { flex-direction: column; gap: 8px; text-align: center; }
+  .footer-links { display: grid; grid-template-columns: repeat(2, auto); justify-content: center; gap: 6px 28px; }
+  .footer-links a { white-space: nowrap; }
+  .site-footer .footer-dept-name { font-size: .86rem; }
+  .site-footer .footer-dev-credit { max-width: 100%; }
+  .site-footer .footer-dev-text { white-space: nowrap; }
+  .lb-stats { gap: 8px; }
+  #pageHome .lb-stat, .lb-stat { flex-direction: column; gap: 2px; padding: 12px; align-items: flex-start; }
+  .lb-stat b { font-size: 1.6rem; }
+  .lb-stat span { font-size: .76rem; }
+  .lb-head { flex-direction: row; align-items: flex-end; flex-wrap: wrap; }
+  .lb-clock { align-self: auto; font-size: .9rem; padding: 6px 12px; }
+  .cl-group { padding: 14px 12px 14px; border-radius: 20px; }
+  .cl-date { width: 46px; height: 50px; border-radius: 14px; }
+  .cl-date b { font-size: 1.25rem; }
+  .cl-title strong { font-size: .98rem; }
+}

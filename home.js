@@ -7,7 +7,7 @@
 // ต้องโหลดหลัง app.js และ venues.js
 // ============================================================
 
-const HERO_IMAGES = [2, 1, 3, 4, 5, 6, 7].map(n => `images/places/place-${n}.jpg`);
+const HERO_IMAGES = [2, 1, 8, 3, 9, 4, 10, 5, 11, 6].map(n => `images/places/place-${n}.jpg`);
 const HERO_INTERVAL_MS = 6500;
 const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
