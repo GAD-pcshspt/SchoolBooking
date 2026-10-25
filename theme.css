@@ -1538,3 +1538,5 @@ h1, h2, h3, h4, h5,
   .cl-date b { font-size: 1.25rem; }
   .cl-title strong { font-size: .98rem; }
 }
+/* ป้ายสถานะการเชื่อมต่อ: ซ่อนตอนปกติ แสดงเฉพาะตอนขัดข้อง */
+.cloud-status-tag.online, .cloud-status-tag.syncing { display: none !important; }

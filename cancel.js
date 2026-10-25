@@ -158,7 +158,7 @@ function openCancelModal(id) {
   const b = getBookingById(id);
   if (!b) return;
   if (!isCancelCodeAvailable()) {
-    showToast('ระบบยกเลิกด้วยรหัสใช้ได้เฉพาะเมื่อเชื่อมต่อ Supabase', 'error');
+    showToast('ขณะนี้เชื่อมต่อฐานข้อมูลไม่ได้ จึงยกเลิกด้วยรหัสไม่ได้', 'error');
     return;
   }
   closeBookingDetail();

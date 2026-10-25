@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="style.css?v=20261025_1" />
-  <link rel="stylesheet" href="theme.css?v=20261026_5" />
+  <link rel="stylesheet" href="theme.css?v=20261026_6" />
   <meta name="theme-color" content="#0a1634" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -220,7 +220,7 @@
           <span class="page-title-icon">📝</span>
           แบบฟอร์มจองใช้สถานที่
           <span class="cloud-status-tag syncing" onclick="manualRefreshData()" style="cursor:pointer;"
-            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Supabase...</span>
+            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ...</span>
         </h2>
         <p class="page-subtitle">กรุณากรอกข้อมูลให้ครบถ้วน ระบบจะตรวจสอบการจองซ้ำโดยอัตโนมัติ</p>
       </div>
@@ -409,7 +409,7 @@
           <span class="page-title-icon">📅</span>
           ปฏิทินการจองสถานที่
           <span class="cloud-status-tag syncing" onclick="manualRefreshData()" style="cursor:pointer;"
-            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ Supabase...</span>
+            title="คลิกเพื่อรีเฟรชข้อมูล">⏳ กำลังเชื่อมต่อ...</span>
         </h2>
         <p class="page-subtitle">แสดงภาพรวมการจองสถานที่ในแต่ละเดือน คลิกวันเพื่อดูรายละเอียด</p>
       </div>
@@ -595,7 +595,7 @@
       </div>
 
       <div class="cancel-unavailable hidden" id="cancelUnavailable">
-        ⚠️ ขณะนี้ระบบไม่ได้เชื่อมต่อฐานข้อมูลออนไลน์ จึงยกเลิกด้วยรหัสไม่ได้ กรุณาติดต่อแอดมิน
+        ⚠️ ขณะนี้ระบบไม่ได้เชื่อมต่อฐานข้อมูล จึงยกเลิกด้วยรหัสไม่ได้ กรุณาติดต่อแอดมิน
       </div>
 
       <div class="cancel-section">
@@ -620,7 +620,7 @@
           <span class="page-title-icon">⚙️</span>
           จัดการการจอง (ผู้ดูแลระบบ)
           <button type="button" class="btn-admin-refresh" onclick="manualRefreshData()"
-            title="ดึงข้อมูลล่าสุดจาก Supabase">🔄 รีเฟรชข้อมูล</button>
+            title="ดึงข้อมูลล่าสุด">🔄 รีเฟรชข้อมูล</button>
           <button class="btn-logout" onclick="doAdminLogout()" title="ออกจากระบบ">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -1034,7 +1034,7 @@
             🗑️ จัดการล้างข้อมูลประวัติการจอง
           </h3>
           <p style="font-size:0.875rem;color:var(--gray-600);margin-bottom:14px;line-height:1.5;">
-            สามารถเลือกล้างข้อมูลการจองรายเดือน รายสัปดาห์ รายวัน หรือล้างข้อมูลทั้งหมดออกจากระบบและฐานข้อมูล Supabase
+            สามารถเลือกล้างข้อมูลการจองรายเดือน รายสัปดาห์ รายวัน หรือล้างข้อมูลทั้งหมดออกจากระบบและฐานข้อมูล
             ได้ตามต้องการ
           </p>
           <button type="button" class="btn-danger-solid" onclick="openClearDataModal()"
@@ -1120,11 +1120,11 @@
       </div>
       <div class="modal-body">
         <div class="clear-alert-banner">
-          <div>⚠️ <strong>ข้อควรระวัง:</strong> การล้างข้อมูลจะลบรายการออกจากระบบ และลบออกจากฐานข้อมูล Supabase ทันที
+          <div>⚠️ <strong>ข้อควรระวัง:</strong> การล้างข้อมูลจะลบรายการออกจากระบบ และลบออกจากฐานข้อมูลทันที
             ข้อมูลที่ลบแล้วจะไม่สามารถกู้คืนได้</div>
           <div
             style="margin-top:8px;padding-top:8px;border-top:1px dashed rgba(220,38,38,0.25);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:0.8rem;">
-            <span id="gasStatusInClearModal">🟢 <strong>Supabase Cloud:</strong> เชื่อมต่อฐานข้อมูลพร้อมลบข้อมูลทันที</span>
+            <span id="gasStatusInClearModal">🟢 เชื่อมต่อฐานข้อมูลแล้ว พร้อมลบข้อมูลทันที</span>
           </div>
         </div>
 
@@ -1192,7 +1192,7 @@
         <div class="clear-confirm-check" style="margin-top:16px;">
           <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.875rem;cursor:pointer;">
             <input type="checkbox" id="chkConfirmClear" onchange="toggleClearSubmitBtn()" style="margin-top:4px;" />
-            <span>ฉันเข้าใจและยืนยันที่จะลบข้อมูลข้างต้นออกจากระบบและฐานข้อมูล Supabase</span>
+            <span>ฉันเข้าใจและยืนยันที่จะลบข้อมูลข้างต้นออกจากระบบและฐานข้อมูล</span>
           </label>
         </div>
       </div>
@@ -1209,12 +1209,12 @@
   <div class="modal-overlay hidden" id="appsScriptHelpModal">
     <div class="modal-box" style="max-width:560px;">
       <div class="modal-header">
-        <h3>⚡ ระบบฐานข้อมูล Supabase Cloud</h3>
+        <h3>⚡ ระบบฐานข้อมูล</h3>
         <button class="btn-close-modal" onclick="closeAppsScriptHelpModal()">✕</button>
       </div>
       <div class="modal-body" style="font-size:0.875rem;line-height:1.6;color:var(--gray-800);">
         <p style="margin-bottom:12px;">
-          ระบบนี้เชื่อมต่อกับ <strong>Supabase Cloud Database</strong> โดยตรง ข้อมูลการจอง การยกเลิก และการล้างข้อมูลจะถูกบันทึกและลบออกจากเซิร์ฟเวอร์แบบเรียลไทม์ทันที
+          ระบบนี้เชื่อมต่อกับ<strong>ฐานข้อมูลกลาง</strong>โดยตรง ข้อมูลการจอง การยกเลิก และการล้างข้อมูลจะถูกบันทึกและลบออกจากเซิร์ฟเวอร์แบบเรียลไทม์ทันที
         </p>
       </div>
       <div class="modal-footer">
@@ -1558,10 +1558,10 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20261010_9"></script>
-  <script src="app.js?v=20261026_1"></script>
+  <script src="app.js?v=20261026_2"></script>
   <script src="venues.js?v=20261025_1"></script>
   <script src="multiday.js?v=20261021_4"></script>
-  <script src="cancel.js?v=20261025_1"></script>
+  <script src="cancel.js?v=20261026_1"></script>
   <script src="home.js?v=20261026_3"></script>
 </body>
 </html>

@@ -986,7 +986,7 @@ async function saveAdminOptions() {
   options._updatedAt = Date.now();
   saveFormOptions(options);
   if (checkIsSupabaseActive()) {
-    showToast('⏳ กำลังบันทึกและส่งข้อมูลสถานที่ไปยัง Supabase Cloud...', 'info');
+    showToast('⏳ กำลังบันทึกข้อมูลสถานที่...', 'info');
     const ok = await syncFormOptionsToCloud(options);
     if (ok) {
       showToast('💾 บันทึกและส่งข้อมูลสถานที่/ตัวเลือกไปยังคลาวด์เรียบร้อย (ทุกเครื่องอัปเดตตรงกันทันที)', 'success');
@@ -1000,10 +1000,10 @@ async function saveAdminOptions() {
 
 async function syncOptionsFromCloudManual() {
   if (!checkIsSupabaseActive()) {
-    showToast('กรุณาเชื่อมต่อ Supabase ก่อน', 'warning');
+    showToast('ยังเชื่อมต่อฐานข้อมูลไม่ได้', 'warning');
     return;
   }
-  showToast('⏳ กำลังดึงข้อมูลตัวเลือกและสถานที่ล่าสุดจาก Supabase Cloud...', 'info');
+  showToast('⏳ กำลังดึงข้อมูลตัวเลือกและสถานที่ล่าสุด...', 'info');
   try {
     const { data, error } = await supabaseClient
       .from('bookings')
@@ -1217,7 +1217,7 @@ async function fetchGoogleSheetsBookings(silent = false) {
   // 1. กรณีใช้ Supabase
   if (checkIsSupabaseActive()) {
     try {
-      if (!silent) updateCloudStatusBadge('syncing', 'กำลังดึงข้อมูลจาก Supabase...');
+      if (!silent) updateCloudStatusBadge('syncing', 'กำลังดึงข้อมูล...');
       initSupabaseRealtime();
 
       const { data, error } = await supabaseClient
@@ -1315,7 +1315,7 @@ async function fetchGoogleSheetsBookings(silent = false) {
         saveBookings(effectiveBookings);
         renderCalendar();
         if (state.isAdmin) renderAdmin();
-        updateCloudStatusBadge(true, `ออนไลน์ Supabase (${effectiveBookings.length} รายการ)`);
+        updateCloudStatusBadge(true, `อัปเดตแล้ว (${effectiveBookings.length} รายการ)`);
         return true;
       }
     } catch (err) {
@@ -1331,7 +1331,7 @@ async function fetchGoogleSheetsBookings(silent = false) {
 
   if (!hasSheet) {
     if (typeof isSupabaseConfigured !== 'undefined' && !isSupabaseConfigured) {
-      updateCloudStatusBadge(false, 'รอใส่ Supabase Key (ใช้ในเครื่องชั่วคราว)');
+      updateCloudStatusBadge(false, 'ยังไม่ได้ตั้งค่าฐานข้อมูล (ใช้ในเครื่องชั่วคราว)');
     } else {
       updateCloudStatusBadge(false, 'โหมดออฟไลน์ (เฉพาะเครื่องนี้)');
     }
@@ -1371,7 +1371,7 @@ async function fetchGoogleSheetsBookings(silent = false) {
       saveBookings(effectiveBookings);
       renderCalendar();
       if (state.isAdmin) renderAdmin();
-      updateCloudStatusBadge(true, `ออนไลน์ Google Sheets (${effectiveBookings.length} รายการ)`);
+      updateCloudStatusBadge(true, `อัปเดตแล้ว (${effectiveBookings.length} รายการ)`);
       return true;
     } else {
       updateCloudStatusBadge(false, 'ดึงข้อมูลไม่สำเร็จ');
@@ -1387,7 +1387,7 @@ async function sendGoogleSheetsAction(action, payload = {}) {
   // 1. ส่งไปยัง Supabase
   if (checkIsSupabaseActive()) {
     try {
-      updateCloudStatusBadge('syncing', 'กำลังส่งข้อมูลไป Supabase...');
+      updateCloudStatusBadge('syncing', 'กำลังบันทึกข้อมูล...');
       
       if (action === 'create') {
         const b = payload.booking;
@@ -1411,7 +1411,7 @@ async function sendGoogleSheetsAction(action, payload = {}) {
         const { error } = await supabaseClient.from('bookings').upsert(record);
         if (error) throw error;
         console.log('✅ Supabase [create] upserted successfully!');
-        updateCloudStatusBadge(true, 'ออนไลน์ (เชื่อมต่อ Supabase)');
+        updateCloudStatusBadge(true, 'บันทึกแล้ว');
         return true;
       }
 
@@ -1423,7 +1423,7 @@ async function sendGoogleSheetsAction(action, payload = {}) {
           .eq('id', targetId);
         if (error) throw error;
         console.log('✅ Supabase [cancel] updated successfully!');
-        updateCloudStatusBadge(true, 'ออนไลน์ (เชื่อมต่อ Supabase)');
+        updateCloudStatusBadge(true, 'บันทึกแล้ว');
         return true;
       }
 
@@ -1451,12 +1451,12 @@ async function sendGoogleSheetsAction(action, payload = {}) {
           .eq('id', targetId);
         if (error) throw error;
         console.log('✅ Supabase [update] updated successfully!');
-        updateCloudStatusBadge(true, 'ออนไลน์ (เชื่อมต่อ Supabase)');
+        updateCloudStatusBadge(true, 'บันทึกแล้ว');
         return true;
       }
     } catch (err) {
       console.warn(`⚠️ Supabase [${action}] sync error:`, err);
-      updateCloudStatusBadge(false, 'บันทึกลง Supabase ไม่สำเร็จ');
+      updateCloudStatusBadge(false, 'บันทึกข้อมูลไม่สำเร็จ');
       return false;
     }
   }
@@ -1475,7 +1475,7 @@ async function sendGoogleSheetsAction(action, payload = {}) {
       body: JSON.stringify({ action, ...payload })
     });
     console.log(`✅ Google Sheets [${action}] sent successfully with no-cors!`);
-    updateCloudStatusBadge(true, 'ออนไลน์ (เชื่อมต่อ Google Sheets)');
+    updateCloudStatusBadge(true, 'บันทึกแล้ว');
     return true;
   } catch (err) {
     console.warn(`⚠️ Google Sheets [${action}] sync error:`, err);
@@ -1488,25 +1488,25 @@ async function sendGoogleSheetsAction(action, payload = {}) {
 async function sendGoogleSheetsClear(payload = {}) {
   // 1. จัดการบน Supabase
   if (checkIsSupabaseActive()) {
-    updateCloudStatusBadge('syncing', 'กำลังล้างข้อมูลใน Supabase...');
+    updateCloudStatusBadge('syncing', 'กำลังล้างข้อมูล...');
     try {
       const mode = payload.mode || 'selected';
       if (mode === 'all') {
         const { error } = await supabaseClient.from('bookings').delete().neq('id', '__site_form_options__');
         if (error) throw error;
-        updateCloudStatusBadge(true, 'ออนไลน์ (ล้างข้อมูลใน Supabase สำเร็จ)');
-        return { success: true, message: 'ล้างข้อมูลทั้งหมดใน Supabase เรียบร้อยแล้ว' };
+        updateCloudStatusBadge(true, 'ล้างข้อมูลสำเร็จ');
+        return { success: true, message: 'ล้างข้อมูลทั้งหมดในฐานข้อมูลเรียบร้อยแล้ว' };
       } else if (Array.isArray(payload.ids) && payload.ids.length > 0) {
         const strIds = payload.ids.map(x => String(x).trim());
         const { error } = await supabaseClient.from('bookings').delete().in('id', strIds);
         if (error) throw error;
-        updateCloudStatusBadge(true, 'ออนไลน์ (ลบข้อมูลใน Supabase สำเร็จ)');
-        return { success: true, count: strIds.length, message: `ลบข้อมูลใน Supabase สำเร็จ ${strIds.length} รายการ` };
+        updateCloudStatusBadge(true, 'ลบข้อมูลสำเร็จ');
+        return { success: true, count: strIds.length, message: `ลบข้อมูลในฐานข้อมูลสำเร็จ ${strIds.length} รายการ` };
       }
       return { success: false, message: 'ไม่พบรายการที่ต้องการลบ' };
     } catch (err) {
       console.warn('Supabase clear error:', err);
-      updateCloudStatusBadge(false, 'ล้างข้อมูลใน Supabase ไม่สำเร็จ');
+      updateCloudStatusBadge(false, 'ล้างข้อมูลไม่สำเร็จ');
       return { success: false, message: err.message };
     }
   }
@@ -1550,7 +1550,7 @@ async function sendGoogleSheetsClear(payload = {}) {
 
   if (getResult) {
     if (getResult.success) {
-      updateCloudStatusBadge(true, 'ออนไลน์ (ล้างข้อมูลใน Google Sheets แล้ว)');
+      updateCloudStatusBadge(true, 'ล้างข้อมูลแล้ว');
       return { success: true, count: getResult.count, message: getResult.message };
     } else {
       updateCloudStatusBadge(false, 'Google Sheets: สคริปต์ยังไม่รองรับคำสั่งล้างข้อมูล');
@@ -1558,7 +1558,7 @@ async function sendGoogleSheetsClear(payload = {}) {
     }
   }
 
-  updateCloudStatusBadge(true, 'ออนไลน์ (ส่งคำสั่งไป Google Sheets แล้ว)');
+  updateCloudStatusBadge(true, 'ส่งคำสั่งแล้ว');
   return { success: true, message: 'ส่งคำสั่งไปยัง Google Sheets แล้ว' };
 }
 
@@ -1570,12 +1570,12 @@ async function manualRefreshData() {
   }
 
   if (checkIsSupabaseActive()) {
-    showToast('กำลังดึงข้อมูลล่าสุดจาก Supabase...', 'info');
+    showToast('กำลังดึงข้อมูลล่าสุด...', 'info');
     const ok = await fetchGoogleSheetsBookings(false);
     if (ok) {
-      showToast('อัปเดตข้อมูลล่าสุดจาก Supabase เรียบร้อยแล้ว ⚡', 'success');
+      showToast('อัปเดตข้อมูลล่าสุดเรียบร้อยแล้ว ⚡', 'success');
     } else {
-      showToast('การเชื่อมต่อ Supabase ขัดข้อง แสดงข้อมูลในเครื่อง', 'warning');
+      showToast('การเชื่อมต่อขัดข้อง แสดงข้อมูลในเครื่อง', 'warning');
     }
   } else if (checkIsGoogleSheetsConfigured()) {
     showToast('กำลังดึงข้อมูลล่าสุดจาก Google Sheets...', 'info');
@@ -4228,7 +4228,7 @@ async function openClearDataModal() {
   const statusEl = document.getElementById('gasStatusInClearModal');
   if (statusEl) {
     if (checkIsSupabaseActive()) {
-      statusEl.innerHTML = '🟢 <strong>Supabase Cloud:</strong> เชื่อมต่อฐานข้อมูล พร้อมลบข้อมูลจริงทันที';
+      statusEl.innerHTML = '🟢 เชื่อมต่อฐานข้อมูลแล้ว พร้อมลบข้อมูลจริงทันที';
     } else {
       statusEl.innerHTML = '⏳ กำลังตรวจสอบการเชื่อมต่อ...';
       try {
@@ -4386,7 +4386,7 @@ function updateClearPreview() {
       textEl.textContent = 'ไม่พบข้อมูลที่ตรงกับเงื่อนไขที่เลือก';
     } else {
       textEl.textContent = checkIsSupabaseActive()
-        ? `รายการที่จะถูกลบออกจากระบบและฐานข้อมูล Supabase`
+        ? `รายการที่จะถูกลบออกจากระบบและฐานข้อมูล`
         : `รายการที่จะถูกลบออกจากระบบและ Google Sheets`;
     }
   }
@@ -4443,7 +4443,7 @@ async function executeClearBookings() {
     // 3. ซิงค์คำสั่งล้างข้อมูลไปยัง Supabase / Cloud
     let clearResult = null;
     if (checkIsSupabaseActive()) {
-      showToast('กำลังลบข้อมูลออกจาก Supabase Cloud...', 'info');
+      showToast('กำลังลบข้อมูลออกจากฐานข้อมูล...', 'info');
       clearResult = await sendGoogleSheetsClear({
         mode: isFullWipe ? 'all' : 'selected',
         ids: targetIds
@@ -4459,7 +4459,7 @@ async function executeClearBookings() {
     closeClearDataModal();
 
     if (clearResult && clearResult.success) {
-      const dbLabel = checkIsSupabaseActive() ? 'Supabase' : 'Google Sheets';
+      const dbLabel = checkIsSupabaseActive() ? 'ฐานข้อมูล' : 'Google Sheets';
       showToast(`ล้างข้อมูลทั้งบนเว็บและ ${dbLabel} สำเร็จ (${targetIds.length} รายการ) 🗑️`, 'success');
     } else if (clearResult && !clearResult.success) {
       showToast(`ล้างข้อมูลบนเว็บเรียบร้อยแล้ว (${targetIds.length} รายการ) แต่การลบบนคลาวด์ติดขัด: ${clearResult.message || ''}`, 'warning');
