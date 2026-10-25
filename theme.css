@@ -1289,8 +1289,12 @@ h1, h2, h3, h4, h5,
 .cal-weekday { font-family: var(--font-body); font-weight: 500; letter-spacing: .04em; }
 .cal-day-num { font-family: var(--font-head); font-weight: 500; }
 .cal-booking-chip { font-weight: 400; min-width: 0; }
-.cal-booking-chip .chip-room { font-weight: 600; font-size: .74rem; }
-.cal-booking-chip .chip-meta { font-weight: 400; font-size: .68rem; }
+.cal-booking-chip .chip-room { font-weight: 600; font-size: .70rem; }
+.cal-booking-chip .chip-meta { font-weight: 400; font-size: .65rem; }
+/* ชื่อผู้จอง: อยู่ในกรอบเสมอ ยาวเกินใช้ ... */
+.cal-booking-chip { overflow: hidden; }
+.cal-booking-chip .chip-room, .cal-booking-chip .chip-meta { max-width: 100%; }
+.cal-booking-chip .chip-who { color: #64748b; }
 .cal-more { font-weight: 500; }
 
 /* ---------- ปุ่มรีเฟรช (เฉพาะหน้าแอดมิน) ---------- */
@@ -1490,8 +1494,8 @@ h1, h2, h3, h4, h5,
   .cal-weekdays, .cal-days { grid-template-columns: repeat(7, minmax(88px, 1fr)) !important; }
   .calendar-grid { min-width: 640px !important; }
   .cal-booking-chip { padding: 3px 5px; }
-  .cal-booking-chip .chip-room { font-size: .7rem; }
-  .cal-booking-chip .chip-meta { font-size: .64rem; }
+  .cal-booking-chip .chip-room { font-size: .665rem; }
+  .cal-booking-chip .chip-meta { font-size: .61rem; }
 }
 
 /* ---------- ด้านล่างเว็บ: มินิมอล ตัวเล็กลง เครดิตเด่นขึ้น ---------- */
@@ -1522,8 +1526,7 @@ h1, h2, h3, h4, h5,
   .site-footer { padding: 22px 14px 24px; text-align: center; }
   .site-footer .footer-container { flex-direction: column; align-items: center; gap: 14px; }
   .footer-brand { flex-direction: column; gap: 8px; text-align: center; }
-  .footer-links { display: grid; grid-template-columns: repeat(2, auto); justify-content: center; gap: 6px 28px; }
-  .footer-links a { white-space: nowrap; }
+  .footer-links { display: none; }
   .site-footer .footer-dept-name { font-size: .86rem; }
   .site-footer .footer-dev-credit { max-width: 100%; }
   .site-footer .footer-dev-text { white-space: nowrap; }
@@ -1540,3 +1543,50 @@ h1, h2, h3, h4, h5,
 }
 /* ป้ายสถานะการเชื่อมต่อ: ซ่อนตอนปกติ แสดงเฉพาะตอนขัดข้อง */
 .cloud-status-tag.online, .cloud-status-tag.syncing { display: none !important; }
+/* ---------- เครดิตผู้พัฒนา: ป้ายสีน้ำเงิน + ไอคอนคอมยิ้ม ---------- */
+.site-footer .footer-dev-credit {
+  position: relative;
+  overflow: hidden;
+  gap: 10px;
+  padding: 5px 18px 5px 5px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 55%, #3b82f6 100%);
+  box-shadow: 0 10px 24px -8px rgba(29, 78, 216, .55), inset 0 1px 0 rgba(255, 255, 255, .25);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.site-footer .footer-dev-credit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .28) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: devShine 6s ease-in-out infinite;
+  pointer-events: none;
+}
+.site-footer .footer-dev-credit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -8px rgba(29, 78, 216, .65), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.site-footer .footer-dev-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, .2);
+  filter: none;
+}
+.site-footer .footer-dev-icon svg { width: 22px; height: 22px; animation: devBob 2.8s ease-in-out infinite; }
+.site-footer .footer-dev-icon .dev-spark { transform-origin: 27.5px 4.7px; animation: devTwinkle 2.8s ease-in-out infinite; }
+.site-footer .footer-dev-text { color: #fff; font-weight: 600; }
+
+@keyframes devShine { 0%, 70% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@keyframes devBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+@keyframes devTwinkle { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.55); opacity: .6; } }
+@media (prefers-reduced-motion: reduce) {
+  .site-footer .footer-dev-credit::after,
+  .site-footer .footer-dev-icon svg,
+  .site-footer .footer-dev-icon .dev-spark { animation: none; }
+}
