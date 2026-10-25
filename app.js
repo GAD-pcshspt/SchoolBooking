@@ -2301,9 +2301,9 @@ async function submitBooking(event) {
 
 // "นายสมชาย ใจดี" → "สมชาย" (ตัดคำนำหน้าและนามสกุล ใช้ในช่องปฏิทินที่พื้นที่น้อย)
 function firstNameOnly(fullName) {
-  const first = String(fullName || '').trim().split(/\s+/)[0] || '';
-  const bare = first.replace(/^(นางสาว|นาง|นาย|น\.ส\.|ว่าที่\s?ร\.?ต\.?|ดร\.)/, '');
-  return bare || first;
+  const name = String(fullName || '').trim();
+  const bare = name.replace(/^((นางสาว|นาง|นาย|น\.ส\.|ว่าที่\s?ร\.?ต\.?|ดร\.|ครู)\s*)+/, '');
+  return (bare || name).split(/\s+/)[0] || '';
 }
 
 function showConflictModal(conflict) {
@@ -2793,7 +2793,7 @@ function createDayCell(date, bookings, today, otherMonth) {
           chip.innerHTML = `
             <span class="chip-room">📍 ${escapeHtml(b.room)}</span>
             <span class="chip-meta">⏰ ${b.startTime}–${b.endTime} น.</span>
-            <span class="chip-meta chip-who">👤 ${escapeHtml(firstNameOnly(b.fullName))}</span>
+            <span class="chip-meta chip-who">👤 ครู${escapeHtml(firstNameOnly(b.fullName))}</span>
           `;
           chip.title = `📍 ${b.room}\n👤 ${b.fullName} (${b.position || '–'}) — ${b.department}\n⏰ ${b.startTime}–${b.endTime} น.\n🎯 ${b.purpose}\n\n(แตะเพื่อดูรายละเอียดเต็มและพิมพ์ใบจอง)`;
           chip.onclick = (e) => {
