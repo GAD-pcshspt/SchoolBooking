@@ -2560,6 +2560,8 @@ function setCalViewMode(mode) {
   if (btnList) btnList.classList.toggle('active', mode === 'list');
   if (btnTimeline) btnTimeline.classList.toggle('active', mode === 'timeline');
   if (timelineView) timelineView.classList.toggle('hidden', mode !== 'timeline');
+  // ปุ่มสรุปรายวันใช้ในมุมมองขยายเต็มและรายการจอง
+  document.getElementById('btnDailySummary')?.classList.toggle('hidden', mode === 'timeline');
   // ตารางรายวันมีปุ่มเลื่อนวันของตัวเอง จึงซ่อนปุ่มเลื่อนเดือน
   if (calNav) calNav.classList.toggle('hidden', mode === 'timeline');
 
@@ -3147,6 +3149,14 @@ function resetManagePeriod() {
   renderAdminTable();
 }
 
+// ไอคอนลายเส้นของปุ่มจัดการในตาราง (อีโมจิแสดงไม่เหมือนกันแต่ละเครื่อง)
+const AT_ICONS = {
+  view: '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  cancel: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  print: '<svg viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>',
+};
+
 function renderAdminTable() {
   initAdminManagePeriod();
 
@@ -3205,26 +3215,30 @@ function renderAdminTable() {
   if (empty) empty.classList.add('hidden');
 
   if (body) {
+    // 6 คอลัมน์พอดีหน้าจอ: ห้องขึ้นก่อน, ชื่อ+ตำแหน่ง+ฝ่ายช่องเดียว, วัน+เวลาช่องเดียว, วันที่ยื่นจองอยู่ใต้วัตถุประสงค์
     body.innerHTML = bookings.map((b, i) => `
       <tr>
-        <td style="text-align:center;font-weight:700;">${i + 1}</td>
-        <td><strong>${escapeHtml(b.fullName)}</strong></td>
-        <td>${escapeHtml(b.position || '-')}</td>
-        <td>${escapeHtml(b.department || '-')}</td>
-        <td>${escapeHtml(b.room)}</td>
-        <td style="text-align:center;">${formatDateThai(b.bookingDate)}</td>
-        <td style="text-align:center;white-space:nowrap"><strong>${b.startTime}–${b.endTime} น.</strong></td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(b.purpose || '')}">${escapeHtml(b.purpose || '-')}</td>
-        <td style="font-size:0.78rem;color:#9ca3af;white-space:nowrap;text-align:center;">${formatDateTimeThai(b.createdAt)}</td>
-        <td style="text-align:center;">
-          <div class="action-btns" style="justify-content:center;">
-            <button class="btn-info"  onclick="viewBookingDetail(${b.id})">ดู</button>
-            <button class="btn-edit"  onclick="editBooking(${b.id})">✏️</button>
-            ${b.status === 'approved'
-              ? `<button class="btn-danger" onclick="cancelBooking(${b.id})">❌ ยกเลิก</button>`
-              : ''}
-            <button class="btn-primary" onclick="openPrintPreview(getBookingById(${b.id}))" style="padding:6px 10px;font-size:0.78rem;">🖨️</button>
-          </div>
+        <td class="at-no">${i + 1}</td>
+        <td class="at-room">${escapeHtml(b.room)}</td>
+        <td class="at-who">
+          <strong>${escapeHtml(b.fullName)}</strong>
+          <small>${escapeHtml([b.position, b.department].filter(Boolean).join(' · ') || '–')}</small>
+        </td>
+        <td class="at-when">
+          <strong>${escapeHtml(fmtDay(b.bookingDate, true))}</strong>
+          <small>${escapeHtml(b.startTime)}–${escapeHtml(b.endTime)} น.</small>
+        </td>
+        <td class="at-purpose">
+          <span title="${escapeHtml(b.purpose || '')}">${escapeHtml(b.purpose || '–')}</span>
+          ${b.createdAt ? `<small>ยื่นจอง ${escapeHtml(formatDateTimeThai(b.createdAt))}</small>` : ''}
+        </td>
+        <td class="at-act">
+          <button type="button" class="at-btn view" onclick="viewBookingDetail(${b.id})" title="ดูรายละเอียด" aria-label="ดูรายละเอียด">${AT_ICONS.view}</button>
+          <button type="button" class="at-btn edit" onclick="editBooking(${b.id})" title="แก้ไข" aria-label="แก้ไข">${AT_ICONS.edit}</button>
+          ${b.status === 'approved'
+            ? `<button type="button" class="at-btn cancel" onclick="cancelBooking(${b.id})" title="ยกเลิกการจอง" aria-label="ยกเลิกการจอง">${AT_ICONS.cancel}</button>`
+            : ''}
+          <button type="button" class="at-btn print" onclick="openPrintPreview(getBookingById(${b.id}))" title="พิมพ์ใบจอง" aria-label="พิมพ์ใบจอง">${AT_ICONS.print}</button>
         </td>
       </tr>
     `).join('');
@@ -4905,7 +4919,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Close modals on overlay click
-  ['adminLoginModal','successModal','bookingDetailModal','editModal','conflictModal','clearDataModal'].forEach(id => {
+  ['adminLoginModal','successModal','bookingDetailModal','editModal','conflictModal','clearDataModal','dailySummaryModal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', function(e) {
       if (e.target === this) {

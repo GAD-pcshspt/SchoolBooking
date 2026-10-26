@@ -1675,3 +1675,212 @@ h1, h2, h3, h4, h5,
   .topbar .main-nav .nav-cta:active,
   .bar-cta:active { transform: scale(.96); filter: brightness(.95); }
 }
+/* ---------- แถบประกาศสีแดง ติดใต้แถบเมนูทุกหน้า ---------- */
+:root { --announce-h: 40px; }
+body.has-announce .main-content { padding-top: var(--announce-h); }
+.announce-bar { display: none !important; }   /* กล่องประกาศแบบเดิม เลิกใช้ */
+.announce-strip {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: var(--announce-h);
+  background: linear-gradient(90deg, #b91c1c, #dc2626 45%, #e11d48);
+  color: #fff;
+  box-shadow: 0 6px 16px -8px rgba(185, 28, 28, .55);
+  overflow: hidden;
+}
+.announce-strip.hidden { display: none; }
+.announce-strip .as-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(var(--wrap), calc(100% - 48px));
+  height: 100%;
+  margin: 0 auto;
+}
+.announce-strip .as-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 3px 11px 3px 9px;
+  border-radius: 999px;
+  background: #fff;
+  color: #b91c1c;
+  font-family: var(--font-head);
+  font-size: .76rem;
+  font-weight: 600;
+}
+.announce-strip .as-label i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: asPulse 1.6s ease-out infinite;
+}
+@keyframes asPulse {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .55); }
+  100% { box-shadow: 0 0 0 7px rgba(220, 38, 38, 0); }
+}
+.announce-strip .as-viewport { flex: 1; min-width: 0; height: 100%; overflow: hidden; }
+.announce-strip .as-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: .88rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.announce-strip .as-item b { font-weight: 600; flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.announce-strip .as-when { min-width: 0; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
+.announce-strip .as-item:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.announce-strip .as-item.as-in { animation: asIn .45s var(--ease-out) both; }
+@keyframes asIn { from { opacity: 0; transform: translateY(60%); } to { opacity: 1; transform: none; } }
+.announce-strip .as-count { flex: none; font-size: .76rem; opacity: .8; font-variant-numeric: tabular-nums; }
+.announce-strip .as-all,
+.announce-strip .as-close {
+  flex: none;
+  border: none;
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition: background .2s;
+}
+.announce-strip .as-all { padding: 4px 12px; border-radius: 999px; font-size: .8rem; font-weight: 500; }
+.announce-strip .as-close { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-size: .8rem; }
+.announce-strip .as-all:hover,
+.announce-strip .as-close:hover { background: rgba(255, 255, 255, .26); }
+body.nav-open .announce-strip { visibility: hidden; }
+
+@media (max-width: 640px) {
+  :root { --announce-h: 36px; }
+  .announce-strip .as-inner { gap: 8px; width: calc(100% - 24px); }
+  .announce-strip .as-label { display: none; }
+  .announce-strip .as-item { font-size: .82rem; }
+  .announce-strip .as-item b { max-width: none; flex: 1 1 auto; min-width: 0; }
+  .announce-strip .as-when, .announce-strip .as-count, .announce-strip .as-all-n { display: none; }
+  .announce-strip .as-all { padding: 3px 10px; font-size: .74rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .announce-strip .as-label i, .announce-strip .as-item.as-in { animation: none; }
+}
+/* ---------- ตารางรายการจอง (แอดมิน): 6 คอลัมน์พอดีหน้าจอคอม ---------- */
+#adminTableWrap { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.admin-fit-table { table-layout: fixed; width: 100%; }
+.admin-fit-table col.c-no { width: 48px; }
+.admin-fit-table col.c-room { width: 17%; }
+.admin-fit-table col.c-who { width: 23%; }
+.admin-fit-table col.c-when { width: 14%; }
+.admin-fit-table col.c-act { width: 168px; }
+.admin-fit-table th { padding: 13px 12px; font-family: var(--font-head); font-weight: 600; white-space: nowrap; }
+.admin-fit-table td { padding: 12px; vertical-align: middle; line-height: 1.4; }
+.admin-fit-table .at-no { text-align: center; font-weight: 600; color: #94a3b8; }
+.admin-fit-table .at-room { font-weight: 600; color: var(--head-ink, #0f1d42); overflow-wrap: anywhere; }
+.admin-fit-table .at-who strong,
+.admin-fit-table .at-when strong { display: block; font-weight: 600; color: var(--head-ink, #0f1d42); overflow-wrap: anywhere; }
+.admin-fit-table small { display: block; margin-top: 2px; font-size: .76rem; color: #64748b; overflow-wrap: anywhere; }
+.admin-fit-table .at-when small { color: #c2410c; font-weight: 500; white-space: nowrap; }
+.admin-fit-table .at-purpose span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: #334155;
+}
+.admin-fit-table .at-purpose small { color: #94a3b8; font-size: .72rem; }
+.admin-fit-table .at-act { white-space: nowrap; text-align: center; }
+.admin-fit-table .at-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: transform .2s var(--ease-out), background .2s, border-color .2s;
+}
+.admin-fit-table .at-btn:hover { transform: translateY(-1px); }
+.admin-fit-table .at-btn.view:hover { background: #eff6ff; border-color: #93c5fd; }
+.admin-fit-table .at-btn.edit:hover { background: #fff7ed; border-color: #fdba74; }
+.admin-fit-table .at-btn.cancel { color: #dc2626; font-weight: 700; }
+.admin-fit-table .at-btn.cancel:hover { background: #fef2f2; border-color: #fca5a5; }
+.admin-fit-table .at-btn.print:hover { background: #f1f5f9; border-color: #cbd5e1; }
+/* จอเล็ก: คงรูปแบบเดียวกัน เลื่อนซ้าย-ขวาได้ */
+@media (max-width: 900px) {
+  .admin-fit-table { min-width: 820px; }
+  .admin-fit-table th, .admin-fit-table td { white-space: normal !important; }
+  .admin-fit-table .at-act, .admin-fit-table th { white-space: nowrap !important; }
+}
+/* ---------- ปุ่ม + หน้าต่าง "สรุปรายวัน" (รูปภาพ) ---------- */
+.calendar-controls { flex-wrap: wrap; }
+.btn-daily-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #c7d2fe;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #eef2ff, #fff);
+  color: #1e3a8a;
+  font-family: var(--font-head);
+  font-size: .88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform .2s var(--ease-out), box-shadow .2s, border-color .2s;
+}
+.btn-daily-summary svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.btn-daily-summary:hover { transform: translateY(-1px); border-color: #818cf8; box-shadow: 0 8px 18px -10px rgba(37, 99, 235, .55); }
+.btn-daily-summary.hidden { display: none; }
+@media (hover: none) { .btn-daily-summary:hover { transform: none; box-shadow: none; } }
+
+.ds-modal { max-width: 980px; }
+.ds-date-bar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
+.ds-date-bar .form-input { max-width: 220px; text-align: center; }
+.ds-day-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--head-ink, #0f1d42);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+.ds-day-btn:hover { background: #f1f5f9; }
+.ds-preview {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  max-height: 62vh;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 16px;
+  background: #e8edf6;
+}
+.ds-preview img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 12px 30px -14px rgba(15, 29, 66, .45); }
+.ds-loading { color: #64748b; font-size: .95rem; }
+.ds-hint { margin: 10px 0 0; text-align: center; color: #94a3b8; font-size: .8rem; }
+@media (min-width: 769px) { .ds-hint { display: none; } }
+@media (max-width: 640px) {
+  .btn-daily-summary { width: 100%; justify-content: center; }
+  .ds-preview { max-height: 55vh; padding: 6px; }
+}.admin-fit-table .at-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.admin-fit-table .at-btn.view { color: #2563eb; }
+.admin-fit-table .at-btn.edit { color: #ea580c; }
+.admin-fit-table .at-btn.print { color: #475569; }

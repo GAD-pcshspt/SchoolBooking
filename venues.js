@@ -249,57 +249,81 @@ function renderAnnouncementItem(a, today, compact) {
   `;
 }
 
+// แถบประกาศสีแดงบาง ๆ ใต้แถบเมนู ทุกหน้า: แสดงทีละประกาศ สลับเองทุก 5 วินาที
+const ANNOUNCE_ROTATE_MS = 5000;
+let announceStripList = [];
+let announceStripIndex = 0;
+let announceStripTimer = null;
+
 function renderAnnouncementBar() {
-  const bar = document.getElementById('announceBar');
-  if (!bar) return;
+  const strip = document.getElementById('announceStrip');
+  if (!strip) return;
   const options = getFormOptions();
   const today = todayStr();
   const list = sortAnnouncements(getAllAnnouncements(options).filter(a => isAnnouncementSoon(a, today)), today);
-
-  if (list.length === 0) {
-    bar.classList.add('hidden');
-    bar.innerHTML = '';
-    return;
-  }
-
   const signature = list.map(a => `${a.id}:${a.updatedAt || ''}`).join(';');
   let dismissed = '';
   try { dismissed = localStorage.getItem(ANNOUNCE_DISMISS_KEY) || ''; } catch (_) {}
-  bar.classList.remove('hidden');
 
-  // ผู้ใช้กดซ่อนไว้แล้ว และยังไม่มีประกาศใหม่ → แสดงแบบย่อ
-  if (dismissed === signature) {
-    bar.className = 'announce-bar collapsed';
-    bar.innerHTML = `
-      <button type="button" class="announce-collapsed-btn" onclick="openAnnouncementsModal()">
-        📢 มีประกาศ ${list.length} รายการ · ดูทั้งหมด
-      </button>
-    `;
+  // ไม่มีประกาศ หรือผู้ใช้กดซ่อนไว้และยังไม่มีประกาศใหม่ → ไม่แสดงแถบ
+  if (list.length === 0 || dismissed === signature) {
+    strip.classList.add('hidden');
+    strip.innerHTML = '';
+    document.body.classList.remove('has-announce');
+    clearInterval(announceStripTimer);
+    announceStripTimer = null;
     return;
   }
 
-  // จอเล็กแสดงน้อยลง เพื่อไม่ให้แถบประกาศดันเนื้อหาหลักลงไปไกล
-  const maxShow = window.matchMedia && window.matchMedia('(max-width: 600px)').matches ? 2 : 3;
-  bar.className = 'announce-bar';
-  bar.innerHTML = `
-    <div class="announce-head">
-      <span class="announce-head-title">📢 ประกาศ</span>
-      <div class="announce-head-actions">
-        <button type="button" class="announce-link" onclick="openAnnouncementsModal()">ดูทั้งหมด (${list.length}) →</button>
-        <button type="button" class="announce-close" onclick="dismissAnnouncementBar()" title="ซ่อนแถบประกาศ (จะแสดงอีกครั้งเมื่อมีประกาศใหม่)">✕</button>
-      </div>
+  if (strip.dataset.signature !== signature) announceStripIndex = 0;
+  announceStripList = list;
+  announceStripIndex %= list.length;
+  strip.dataset.signature = signature;
+  strip.classList.remove('hidden');
+  document.body.classList.add('has-announce');
+  strip.innerHTML = `
+    <div class="as-inner">
+      <span class="as-label"><i></i>ประกาศ</span>
+      <div class="as-viewport" id="announceStripViewport">${announceStripItemHtml(list[announceStripIndex], today)}</div>
+      ${list.length > 1 ? `<span class="as-count" id="announceStripCount">${announceStripIndex + 1}/${list.length}</span>` : ''}
+      <button type="button" class="as-all" onclick="openAnnouncementsModal()">ดูทั้งหมด<span class="as-all-n"> (${list.length})</span> ›</button>
+      <button type="button" class="as-close" onclick="dismissAnnouncementBar()" title="ซ่อนแถบประกาศ (จะแสดงอีกครั้งเมื่อมีประกาศใหม่)" aria-label="ซ่อนแถบประกาศ">✕</button>
     </div>
-    <div class="announce-list">
-      ${list.slice(0, maxShow).map(a => renderAnnouncementItem(a, today, true)).join('')}
-    </div>
-    ${list.length > maxShow ? `<button type="button" class="announce-more" onclick="openAnnouncementsModal()">+ อีก ${list.length - maxShow} ประกาศ</button>` : ''}
   `;
-  bar.dataset.signature = signature;
+
+  clearInterval(announceStripTimer);
+  announceStripTimer = list.length > 1 ? setInterval(rotateAnnouncementStrip, ANNOUNCE_ROTATE_MS) : null;
+}
+
+function announceStripItemHtml(a, today) {
+  const t = ANNOUNCE_TYPES[a.type] || ANNOUNCE_TYPES.info;
+  const click = a.room
+    ? `data-room="${escapeHtml(a.room)}" onclick="openVenueDetail(this.dataset.room)" title="ดูตารางของ ${escapeHtml(a.room)}"`
+    : 'onclick="openAnnouncementsModal()" title="ดูรายละเอียดประกาศ"';
+  return `
+    <button type="button" class="as-item" ${click}>
+      <span class="as-icon">${a.pinned ? '📌' : t.icon}</span>
+      <b>${escapeHtml(a.title)}</b>
+      <span class="as-when">· ${escapeHtml(announcementWhenText(a, today))}</span>
+    </button>`;
+}
+
+function rotateAnnouncementStrip() {
+  const viewport = document.getElementById('announceStripViewport');
+  const strip = document.getElementById('announceStrip');
+  if (!viewport || !announceStripList.length || document.hidden) return;
+  // หยุดสลับตอนเอาเมาส์ชี้ (อ่านอยู่)
+  if (strip && strip.matches(':hover')) return;
+  announceStripIndex = (announceStripIndex + 1) % announceStripList.length;
+  viewport.innerHTML = announceStripItemHtml(announceStripList[announceStripIndex], todayStr());
+  viewport.firstElementChild.classList.add('as-in');
+  const count = document.getElementById('announceStripCount');
+  if (count) count.textContent = `${announceStripIndex + 1}/${announceStripList.length}`;
 }
 
 function dismissAnnouncementBar() {
-  const bar = document.getElementById('announceBar');
-  try { localStorage.setItem(ANNOUNCE_DISMISS_KEY, (bar && bar.dataset.signature) || ''); } catch (_) {}
+  const strip = document.getElementById('announceStrip');
+  try { localStorage.setItem(ANNOUNCE_DISMISS_KEY, (strip && strip.dataset.signature) || ''); } catch (_) {}
   renderAnnouncementBar();
 }
 
