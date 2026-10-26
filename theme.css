@@ -1596,3 +1596,6 @@ h1, h2, h3, h4, h5,
   .cl-items .cl-who-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .cl-items .cl-who-count { flex: none; }
 }
+/* รีเฟรชข้อมูลเบื้องหลัง: ไม่เล่นแอนิเมชันซ้ำ (กันจอกระพริบ) */
+.cl-static .cl-group,
+.cl-static .lb-list.animate .lb-item { animation: none !important; }

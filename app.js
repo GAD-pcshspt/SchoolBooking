@@ -1212,6 +1212,8 @@ function initSupabaseRealtime() {
   }
 }
 
+let hasRenderedCloudData = false;
+
 // Cloud API Sync (Supabase เป็นหลัก, fallback Google Sheets)
 async function fetchGoogleSheetsBookings(silent = false) {
   // 1. กรณีใช้ Supabase
@@ -1312,9 +1314,14 @@ async function fetchGoogleSheetsBookings(silent = false) {
           };
         });
 
+        // ดึงซ้ำทุก 8 วินาที: วาดหน้าใหม่เฉพาะเมื่อข้อมูลต่างจากที่แสดงอยู่ (กันจอกระพริบ)
+        const changed = JSON.stringify(getBookings()) !== JSON.stringify(effectiveBookings);
         saveBookings(effectiveBookings);
-        renderCalendar();
-        if (state.isAdmin) renderAdmin();
+        if (changed || !hasRenderedCloudData) {
+          hasRenderedCloudData = true;
+          renderCalendar();
+          if (state.isAdmin) renderAdmin();
+        }
         updateCloudStatusBadge(true, `อัปเดตแล้ว (${effectiveBookings.length} รายการ)`);
         return true;
       }
@@ -2593,6 +2600,11 @@ function renderCalendarList() {
   if (btnClear) {
     btnClear.classList.toggle('hidden', !calListSelectedDate);
   }
+
+  // เล่นแอนิเมชันเฉพาะตอนเปลี่ยนเดือน/วัน/ห้อง ไม่ใช่ตอนรีเฟรชข้อมูลเบื้องหลัง (กันจอกระพริบ)
+  const viewKey = `${calYear}-${calMonth}|${calListSelectedDate || ''}|${filterRoom}`;
+  container.classList.toggle('cl-static', container.dataset.viewKey === viewKey);
+  container.dataset.viewKey = viewKey;
 
   const allBookings = getBookings().filter(b => {
     if (!filterRoom) return true;
