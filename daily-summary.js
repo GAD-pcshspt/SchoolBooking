@@ -34,6 +34,12 @@ function openDailySummary() {
   dsDate = state.calListSelectedDate || today;
   const input = document.getElementById('dsDateInput');
   if (input) input.value = dsDate;
+  const hint = document.getElementById('dsHint');
+  if (hint) {
+    hint.textContent = dsIsIOS()
+      ? 'กด "บันทึกรูปลงเครื่อง" แล้วเลือก "บันทึกรูปภาพ" รูปจะอยู่ในแอปรูปภาพ (หรือกดค้างที่รูปก็ได้)'
+      : 'บนมือถือ กดค้างที่รูปเพื่อบันทึกลงเครื่องได้เช่นกัน';
+  }
   document.getElementById('dailySummaryModal').classList.remove('hidden');
   renderDailySummary();
 }
@@ -104,15 +110,30 @@ function dsFileName() {
   return `สรุปการจองสถานที่_${dsDate}.png`;
 }
 
-function downloadDailySummary() {
+// iPhone/iPad: ลิงก์ดาวน์โหลดจะเก็บไฟล์ไว้ในแอป "ไฟล์" ไม่ใช่ "รูปภาพ"
+// จึงเปิดเมนูแชร์ของเครื่องแทน ซึ่งมีปุ่ม "บันทึกรูปภาพ" ลงคลังรูปโดยตรง
+function dsIsIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+async function downloadDailySummary() {
   if (!dsBlobUrl) return;
+  if (dsIsIOS() && dsCanShareFile()) {
+    try {
+      await navigator.share({ files: [new File([dsBlob], dsFileName(), { type: 'image/png' })] });
+    } catch (err) {
+      if (err && err.name !== 'AbortError') showToast('บันทึกไม่สำเร็จ ลองกดค้างที่รูปแล้วเลือก "บันทึกรูปภาพ"', 'warning');
+    }
+    return;
+  }
   const a = document.createElement('a');
   a.href = dsBlobUrl;
   a.download = dsFileName();
   document.body.appendChild(a);
   a.click();
   a.remove();
-  showToast('ดาวน์โหลดรูปสรุปแล้ว 🖼️', 'success');
+  showToast('บันทึกรูปสรุปลงเครื่องแล้ว 🖼️', 'success');
 }
 
 function dsCanShareFile() {
@@ -127,10 +148,8 @@ function dsCanShareFile() {
 async function shareDailySummary() {
   if (!dsBlob) return;
   try {
-    await navigator.share({
-      files: [new File([dsBlob], dsFileName(), { type: 'image/png' })],
-      title: `สรุปการจองสถานที่ ${formatDateThai(dsDate)}`,
-    });
+    // ส่งแค่รูป ไม่มีข้อความประกอบ
+    await navigator.share({ files: [new File([dsBlob], dsFileName(), { type: 'image/png' })] });
   } catch (err) {
     if (err && err.name !== 'AbortError') showToast('แชร์ไม่สำเร็จ ลองกดดาวน์โหลดแทน', 'warning');
   }

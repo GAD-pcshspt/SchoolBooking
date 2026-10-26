@@ -1864,17 +1864,29 @@ body.nav-open .announce-strip { visibility: hidden; }
 }
 .ds-day-btn:hover { background: #f1f5f9; }
 .ds-preview {
-  display: grid;
-  place-items: center;
-  min-height: 220px;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
   max-height: 62vh;
   overflow: auto;
   padding: 10px;
   border-radius: 16px;
   background: #e8edf6;
 }
-.ds-preview img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: 0 12px 30px -14px rgba(15, 29, 66, .45); }
-.ds-loading { color: #64748b; font-size: .95rem; }
+.ds-preview img { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 12px 30px -14px rgba(15, 29, 66, .45); }
+.ds-loading { padding: 90px 0; color: #64748b; font-size: .95rem; }
+
+/* หน้าต่างสรุปรายวันบนมือถือ: ไม่ให้อะไรเกินขอบจอ ปุ่มบันทึกเต็มแถว */
+.ds-modal { max-width: min(980px, calc(100vw - 24px)); min-width: 0; }
+.ds-modal .modal-body { min-width: 0; overflow-x: hidden; }
+@media (max-width: 640px) {
+  .ds-modal .ds-date-bar .form-input { min-width: 0; flex: 1; }
+  .ds-footer { flex-wrap: wrap; gap: 8px; }
+  .ds-footer > button { flex: 1 1 0; min-width: 0; }
+  .ds-footer #btnDsDownload { flex: 1 1 100%; order: -1; }
+}
 .ds-hint { margin: 10px 0 0; text-align: center; color: #94a3b8; font-size: .8rem; }
 @media (min-width: 769px) { .ds-hint { display: none; } }
 @media (max-width: 640px) {

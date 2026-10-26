@@ -13,7 +13,7 @@
     href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="style.css?v=20261025_1" />
-  <link rel="stylesheet" href="theme.css?v=20261027_6" />
+  <link rel="stylesheet" href="theme.css?v=20261027_8" />
   <meta name="theme-color" content="#0a1634" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -1459,12 +1459,12 @@
           <button type="button" class="ds-day-btn" onclick="shiftDailySummary(1)" aria-label="วันถัดไป">›</button>
         </div>
         <div class="ds-preview" id="dsPreview"></div>
-        <p class="ds-hint">บนมือถือ กดค้างที่รูปเพื่อบันทึกลงเครื่องได้เช่นกัน</p>
+        <p class="ds-hint" id="dsHint">บนมือถือ กดค้างที่รูปเพื่อบันทึกลงเครื่องได้เช่นกัน</p>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer ds-footer">
         <button class="btn-secondary" onclick="closeDailySummary()">ปิด</button>
         <button class="btn-secondary hidden" id="btnDsShare" onclick="shareDailySummary()">📤 แชร์</button>
-        <button class="btn-primary" id="btnDsDownload" onclick="downloadDailySummary()" disabled>⬇️ ดาวน์โหลดรูป</button>
+        <button class="btn-primary" id="btnDsDownload" onclick="downloadDailySummary()" disabled>💾 บันทึกรูปลงเครื่อง</button>
       </div>
     </div>
   </div>
@@ -1605,6 +1605,6 @@
   <script src="multiday.js?v=20261027_1"></script>
   <script src="cancel.js?v=20261026_1"></script>
   <script src="home.js?v=20261026_3"></script>
-  <script src="daily-summary.js?v=20261027_2"></script>
+  <script src="daily-summary.js?v=20261027_3"></script>
 </body>
 </html>
