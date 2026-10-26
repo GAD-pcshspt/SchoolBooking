@@ -8,8 +8,6 @@
 // ============================================================
 // CONSTANTS
 // ============================================================
-const ADMIN_USER = 'admin';
-
 const THAI_MONTHS = [
   'มกราคม','กุมภาพันธ์','มีนาคม','เมษายน',
   'พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม',
@@ -37,7 +35,8 @@ function escapeHtml(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ============================================================
@@ -172,7 +171,8 @@ let syncOptionsQueue = null;
 let isSyncingOptionsToCloud = false;
 
 async function syncFormOptionsToCloud(opts) {
-  if (!checkIsSupabaseActive()) return false;
+  // ค่าตั้งค่าห้อง/ประกาศ แก้ได้เฉพาะแอดมิน (ฐานข้อมูลก็บล็อกคนอื่นอยู่แล้ว)
+  if (!checkIsSupabaseActive() || !state.isAdmin) return false;
   if (!opts) opts = getFormOptions();
   if (!opts._updatedAt) opts._updatedAt = Date.now();
 
@@ -1105,14 +1105,6 @@ function getNextId() {
   return b.length === 0 ? 1 : Math.max(...b.map(x => Number(x.id) || 0)) + 1;
 }
 
-function getAdminPass() {
-  return localStorage.getItem('pccpl_admin_pass') || 'admin1234';
-}
-
-function setAdminPass(p) {
-  localStorage.setItem('pccpl_admin_pass', p);
-}
-
 // Effective Google Sheets URL resolver (uses config or direct fallback)
 const HARDCODED_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMLwIsaxhf0y7t62H2mBzmJvVqM15NUr_d4oJDtZ5n1ZWhz1Q0EI14QTove0X-gS0LjQ/exec";
 
@@ -1247,7 +1239,8 @@ async function fetchGoogleSheetsBookings(silent = false) {
               const cloudTime = Number(cloudOpts._updatedAt) || 0;
               const localTime = Number(localOpts._updatedAt) || 0;
 
-              if (cloudTime >= localTime) {
+              // คนทั่วไปใช้ค่าจากฐานข้อมูลเสมอ เฉพาะแอดมินที่แก้ค่าในเครื่องใหม่กว่าจึงส่งขึ้นไป
+              if (cloudTime >= localTime || !state.isAdmin) {
                 const cloudJson = JSON.stringify(cloudOpts);
                 const localJson = localStorage.getItem(FORM_OPTIONS_KEY);
                 if (localJson !== cloudJson) {
@@ -1446,6 +1439,15 @@ async function insertBookingsToCloud(list) {
 
 let lastCloudError = null;
 
+// ฐานข้อมูลไม่แจ้ง error เมื่อไม่มีสิทธิ์แก้/ลบ แค่ไม่เปลี่ยนแถวไหนเลย
+// ถ้าไม่มีแถวเปลี่ยนและไม่ได้เป็นแอดมินแล้ว (เช่น ล็อกอินหมดอายุ) ให้ถือว่าไม่สำเร็จ
+async function assertAdminWriteApplied(rows) {
+  if (Array.isArray(rows) && rows.length > 0) return;
+  if (await checkIsAdminOnServer()) return;
+  showToast('สิทธิ์แอดมินหมดอายุ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่', 'error');
+  throw new Error('not_admin');
+}
+
 async function sendGoogleSheetsAction(action, payload = {}) {
   // 1. ส่งไปยัง Supabase
   if (checkIsSupabaseActive()) {
@@ -1463,11 +1465,13 @@ async function sendGoogleSheetsAction(action, payload = {}) {
 
       if (action === 'cancel') {
         const targetId = String(payload.id !== null && payload.id !== undefined ? payload.id : '').trim();
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('bookings')
           .update({ status: 'cancelled' })
-          .eq('id', targetId);
+          .eq('id', targetId)
+          .select('id');
         if (error) throw error;
+        await assertAdminWriteApplied(data);
         console.log('✅ Supabase [cancel] updated successfully!');
         updateCloudStatusBadge(true, 'บันทึกแล้ว');
         return true;
@@ -1491,11 +1495,13 @@ async function sendGoogleSheetsAction(action, payload = {}) {
           room_layout: b.roomLayout || '',
           status: b.status || 'approved'
         };
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('bookings')
           .update(updateRecord)
-          .eq('id', targetId);
+          .eq('id', targetId)
+          .select('id');
         if (error) throw error;
+        await assertAdminWriteApplied(data);
         console.log('✅ Supabase [update] updated successfully!');
         updateCloudStatusBadge(true, 'บันทึกแล้ว');
         return true;
@@ -1539,14 +1545,16 @@ async function sendGoogleSheetsClear(payload = {}) {
     try {
       const mode = payload.mode || 'selected';
       if (mode === 'all') {
-        const { error } = await supabaseClient.from('bookings').delete().neq('id', '__site_form_options__');
+        const { data, error } = await supabaseClient.from('bookings').delete().neq('id', '__site_form_options__').select('id');
         if (error) throw error;
+        await assertAdminWriteApplied(data);
         updateCloudStatusBadge(true, 'ล้างข้อมูลสำเร็จ');
         return { success: true, message: 'ล้างข้อมูลทั้งหมดในฐานข้อมูลเรียบร้อยแล้ว' };
       } else if (Array.isArray(payload.ids) && payload.ids.length > 0) {
         const strIds = payload.ids.map(x => String(x).trim());
-        const { error } = await supabaseClient.from('bookings').delete().in('id', strIds);
+        const { data, error } = await supabaseClient.from('bookings').delete().in('id', strIds).select('id');
         if (error) throw error;
+        await assertAdminWriteApplied(data);
         updateCloudStatusBadge(true, 'ลบข้อมูลสำเร็จ');
         return { success: true, count: strIds.length, message: `ลบข้อมูลในฐานข้อมูลสำเร็จ ${strIds.length} รายการ` };
       }
@@ -1720,36 +1728,91 @@ function showAdminLogin() {
 function closeAdminLogin() {
   document.getElementById('adminLoginModal').classList.add('hidden');
 }
-function doAdminLogin() {
-  const u = document.getElementById('adminUser').value.trim();
-  const p = document.getElementById('adminPass').value.trim();
-
-  if (u === ADMIN_USER && p === getAdminPass()) {
-    state.isAdmin = true;
-    closeAdminLogin();
-    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-    const btnAdmin = document.getElementById('btnAdminLogin');
-    if (btnAdmin) {
-      btnAdmin.classList.add('logged-in');
-      btnAdmin.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>ออกจากระบบ`;
-      btnAdmin.title = 'ออกจากระบบ Admin';
-      btnAdmin.onclick = doAdminLogout;
-    }
-    setTimeout(() => {
-      const navAdmin = document.getElementById('navAdmin');
-      if (navAdmin) {
-        navAdmin.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }, 120);
-    showToast('เข้าสู่ระบบ Admin สำเร็จ ✅', 'success');
-  } else {
-    document.getElementById('errLogin').textContent = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+// แอดมินล็อกอินด้วย Supabase Auth (อีเมล + รหัสผ่าน) และฐานข้อมูลยืนยันว่าอีเมลนี้เป็นแอดมินจริง
+// สิทธิ์จริงอยู่ที่ฐานข้อมูล (supabase/sql/admin-security.sql) หน้าเว็บแค่ซ่อน/แสดงเมนู
+async function checkIsAdminOnServer() {
+  try {
+    const { data, error } = await supabaseClient.rpc('is_admin');
+    return !error && data === true;
+  } catch {
+    return false;
   }
 }
-function doAdminLogout() {
+
+async function doAdminLogin() {
+  const email = document.getElementById('adminUser').value.trim();
+  const password = document.getElementById('adminPass').value;
+  const errEl = document.getElementById('errLogin');
+  const btn = document.getElementById('btnAdminLoginSubmit');
+  errEl.textContent = '';
+
+  if (!checkIsSupabaseActive()) {
+    errEl.textContent = 'เชื่อมต่อฐานข้อมูลไม่ได้ จึงเข้าสู่ระบบไม่ได้ในขณะนี้';
+    return;
+  }
+  if (!email || !password) {
+    errEl.textContent = 'กรุณากรอกอีเมลและรหัสผ่าน';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ กำลังตรวจสอบ...'; }
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      errEl.textContent = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+      return;
+    }
+    if (!(await checkIsAdminOnServer())) {
+      await supabaseClient.auth.signOut();
+      errEl.textContent = 'บัญชีนี้ไม่มีสิทธิ์แอดมิน';
+      return;
+    }
+    closeAdminLogin();
+    enterAdminMode();
+    showToast('เข้าสู่ระบบ Admin สำเร็จ ✅', 'success');
+  } catch (err) {
+    console.warn('Admin login error:', err);
+    errEl.textContent = 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ'; }
+  }
+}
+
+// รีเฟรชหน้าแล้วยังล็อกอินอยู่ (session เก็บใน sessionStorage ของแท็บนี้)
+async function restoreAdminSession() {
+  if (!checkIsSupabaseActive()) return;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    if (data && data.session && await checkIsAdminOnServer()) enterAdminMode();
+  } catch (err) {
+    console.warn('Restore admin session error:', err);
+  }
+}
+
+function enterAdminMode() {
+  state.isAdmin = true;
+  document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+  const btnAdmin = document.getElementById('btnAdminLogin');
+  if (btnAdmin) {
+    btnAdmin.classList.add('logged-in');
+    btnAdmin.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>ออกจากระบบ`;
+    btnAdmin.title = 'ออกจากระบบ Admin';
+    btnAdmin.onclick = doAdminLogout;
+  }
+  setTimeout(() => {
+    const navAdmin = document.getElementById('navAdmin');
+    if (navAdmin) {
+      navAdmin.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, 120);
+}
+async function doAdminLogout() {
+  if (checkIsSupabaseActive()) {
+    try { await supabaseClient.auth.signOut(); } catch (err) { console.warn('Sign out error:', err); }
+  }
   state.isAdmin = false;
   document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
   const btnAdmin = document.getElementById('btnAdminLogin');
@@ -1773,7 +1836,8 @@ function adminLogout() {
 // ============================================================
 // CHANGE PASSWORD
 // ============================================================
-function changePassword() {
+// เปลี่ยนรหัสผ่านบัญชีแอดมินใน Supabase Auth (ตรวจรหัสปัจจุบันก่อน)
+async function changePassword() {
   const cur     = document.getElementById('pwdCurrent').value;
   const nw      = document.getElementById('pwdNew').value.trim();
   const confirm = document.getElementById('pwdConfirm').value.trim();
@@ -1781,17 +1845,31 @@ function changePassword() {
 
   errEl.textContent = '';
 
-  if (cur !== getAdminPass()) {
-    errEl.textContent = '❌ รหัสผ่านปัจจุบันไม่ถูกต้อง'; return;
-  }
-  if (nw.length < 6) {
-    errEl.textContent = '❌ รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; return;
+  if (nw.length < 8) {
+    errEl.textContent = '❌ รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'; return;
   }
   if (nw !== confirm) {
     errEl.textContent = '❌ รหัสผ่านใหม่ไม่ตรงกัน'; return;
   }
+  if (!checkIsSupabaseActive()) {
+    errEl.textContent = '❌ เชื่อมต่อฐานข้อมูลไม่ได้'; return;
+  }
 
-  setAdminPass(nw);
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    const email = data && data.user ? data.user.email : '';
+    const { error: signErr } = await supabaseClient.auth.signInWithPassword({ email, password: cur });
+    if (!email || signErr) {
+      errEl.textContent = '❌ รหัสผ่านปัจจุบันไม่ถูกต้อง'; return;
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: nw });
+    if (error) {
+      errEl.textContent = `❌ เปลี่ยนรหัสผ่านไม่สำเร็จ: ${error.message}`; return;
+    }
+  } catch (err) {
+    errEl.textContent = '❌ เปลี่ยนรหัสผ่านไม่สำเร็จ กรุณาลองใหม่'; return;
+  }
+
   document.getElementById('pwdCurrent').value = '';
   document.getElementById('pwdNew').value     = '';
   document.getElementById('pwdConfirm').value  = '';
@@ -2321,14 +2399,14 @@ function showConflictModal(conflict) {
       </div>
       <div style="background:#fee2e2;border-left:4px solid #dc2626;padding:10px 14px;border-radius:8px;margin-bottom:12px;">
         <div style="font-weight:800;color:#991b1b;font-size:0.95rem;">
-          📍 ห้องที่ซ้ำ: ${conflict.conflictingRooms.join(', ')}
+          📍 ห้องที่ซ้ำ: ${escapeHtml(conflict.conflictingRooms.join(', '))}
         </div>
       </div>
       <div style="line-height:2;font-size:0.9rem;color:#374151;">
         <div>📅 วันที่: <strong>${formatDateThai(c.bookingDate)}</strong></div>
-        <div>⏰ เวลาที่ถูกจองแล้ว: <strong style="color:#ea580c;">${c.startTime} – ${c.endTime} น.</strong></div>
-        <div>👤 ผู้จองเดิม: <strong>${c.fullName}</strong> (${c.position || '–'}) — ${c.department}</div>
-        <div>🎯 วัตถุประสงค์: ${c.purpose}</div>
+        <div>⏰ เวลาที่ถูกจองแล้ว: <strong style="color:#ea580c;">${escapeHtml(c.startTime)} – ${escapeHtml(c.endTime)} น.</strong></div>
+        <div>👤 ผู้จองเดิม: <strong>${escapeHtml(c.fullName)}</strong> (${escapeHtml(c.position || '–')}) — ${escapeHtml(c.department)}</div>
+        <div>🎯 วัตถุประสงค์: ${escapeHtml(c.purpose)}</div>
       </div>
       <div style="margin-top:14px;padding-top:10px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:0.85rem;">
         💡 คำแนะนำ: กรุณาเปลี่ยนช่วงเวลา หรือยกเลิกการเลือกห้องที่ติดซ้ำ
@@ -2803,7 +2881,7 @@ function createDayCell(date, bookings, today, otherMonth) {
           chip.className = `cal-booking-chip ${b.status}`;
           chip.innerHTML = `
             <span class="chip-room">📍 ${escapeHtml(b.room)}</span>
-            <span class="chip-meta">⏰ ${b.startTime}–${b.endTime} น.</span>
+            <span class="chip-meta">⏰ ${escapeHtml(b.startTime)}–${escapeHtml(b.endTime)} น.</span>
             <span class="chip-meta chip-who">👤 ครู${escapeHtml(firstNameOnly(b.fullName))}</span>
           `;
           chip.title = `📍 ${b.room}\n👤 ${b.fullName} (${b.position || '–'}) — ${b.department}\n⏰ ${b.startTime}–${b.endTime} น.\n🎯 ${b.purpose}\n\n(แตะเพื่อดูรายละเอียดเต็มและพิมพ์ใบจอง)`;
@@ -2863,7 +2941,7 @@ function showDayDetail(date, dayBookings) {
             <div>👤 <strong>${escapeHtml(b.fullName)}</strong> (${escapeHtml(b.position || '–')}) — ${escapeHtml(b.department || '–')}</div>
             <div>⏰ <strong style="color:#ea580c;">${b.startTime} – ${b.endTime} น.</strong></div>
             <div>🎯 ${escapeHtml(b.purpose || '–')}</div>
-            ${b.studentCount ? `<div>👥 จำนวนผู้ใช้ห้อง <strong>${b.studentCount}</strong> คน ${b.grade ? `(ชั้น/กลุ่ม ${escapeHtml(b.grade)})` : ''}</div>` : ''}
+            ${b.studentCount ? `<div>👥 จำนวนผู้ใช้ห้อง <strong>${escapeHtml(b.studentCount)}</strong> คน ${b.grade ? `(ชั้น/กลุ่ม ${escapeHtml(b.grade)})` : ''}</div>` : ''}
             ${b.roomLayout ? `<div>📐 รูปแบบการจัดห้อง: ${escapeHtml(b.roomLayout)}</div>` : ''}
           </div>
           <div style="margin-top:10px;display:flex;justify-content:flex-end;">
@@ -3084,8 +3162,14 @@ async function cancelBooking(id) {
   renderCalendar();
 
   if (checkIsGoogleSheetsConfigured()) {
-    await sendGoogleSheetsAction('cancel', { id: targetIdStr });
+    const ok = await sendGoogleSheetsAction('cancel', { id: targetIdStr });
     await fetchGoogleSheetsBookings(true);
+    if (!ok) {
+      if (!lastCloudError || lastCloudError.message !== 'not_admin') {
+        showToast('ยกเลิกการจองไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่', 'error');
+      }
+      return;
+    }
   }
 
   showToast('ยกเลิกการจองแล้ว ⚠️', 'warning');
@@ -3106,16 +3190,16 @@ function viewBookingDetail(id) {
 
   document.getElementById('bookingDetailBody').innerHTML = `
     <div class="booking-detail-grid">
-      <div class="detail-item"><div class="detail-label">ชื่อ-นามสกุล</div><div class="detail-value">${b.fullName}</div></div>
-      <div class="detail-item"><div class="detail-label">ตำแหน่ง</div><div class="detail-value">${b.position}</div></div>
-      <div class="detail-item"><div class="detail-label">ฝ่ายงาน</div><div class="detail-value">${b.department}</div></div>
-      <div class="detail-item"><div class="detail-label">ห้องที่จอง</div><div class="detail-value">${b.room}</div></div>
-      <div class="detail-item full"><div class="detail-label">วัตถุประสงค์</div><div class="detail-value">${b.purpose}</div></div>
+      <div class="detail-item"><div class="detail-label">ชื่อ-นามสกุล</div><div class="detail-value">${escapeHtml(b.fullName)}</div></div>
+      <div class="detail-item"><div class="detail-label">ตำแหน่ง</div><div class="detail-value">${escapeHtml(b.position)}</div></div>
+      <div class="detail-item"><div class="detail-label">ฝ่ายงาน</div><div class="detail-value">${escapeHtml(b.department)}</div></div>
+      <div class="detail-item"><div class="detail-label">ห้องที่จอง</div><div class="detail-value">${escapeHtml(b.room)}</div></div>
+      <div class="detail-item full"><div class="detail-label">วัตถุประสงค์</div><div class="detail-value">${escapeHtml(b.purpose)}</div></div>
       <div class="detail-item"><div class="detail-label">วันที่ใช้</div><div class="detail-value">${formatDateThai(b.bookingDate)}</div></div>
-      <div class="detail-item"><div class="detail-label">เวลา</div><div class="detail-value">${b.startTime}–${b.endTime} น.</div></div>
-      <div class="detail-item"><div class="detail-label">จำนวนผู้ใช้ห้อง</div><div class="detail-value">${b.studentCount || '–'} คน</div></div>
-      <div class="detail-item"><div class="detail-label">ระดับชั้น / กลุ่มผู้ใช้</div><div class="detail-value">${b.grade || '–'}</div></div>
-      <div class="detail-item full"><div class="detail-label">รูปแบบการจัดห้อง</div><div class="detail-value">${b.roomLayout || '–'}</div></div>
+      <div class="detail-item"><div class="detail-label">เวลา</div><div class="detail-value">${escapeHtml(b.startTime)}–${escapeHtml(b.endTime)} น.</div></div>
+      <div class="detail-item"><div class="detail-label">จำนวนผู้ใช้ห้อง</div><div class="detail-value">${escapeHtml(b.studentCount || '–')} คน</div></div>
+      <div class="detail-item"><div class="detail-label">ระดับชั้น / กลุ่มผู้ใช้</div><div class="detail-value">${escapeHtml(b.grade || '–')}</div></div>
+      <div class="detail-item full"><div class="detail-label">รูปแบบการจัดห้อง</div><div class="detail-value">${escapeHtml(b.roomLayout || '–')}</div></div>
       <div class="detail-item"><div class="detail-label">สถานะ</div><div class="detail-value"><span class="status-badge ${b.status}">${statusLabel(b.status)}</span></div></div>
       <div class="detail-item"><div class="detail-label">วันที่ยื่นจอง</div><div class="detail-value">${formatDateTimeThai(b.createdAt)}</div></div>
     </div>
@@ -3176,7 +3260,7 @@ function editBooking(id) {
       <div class="form-group"><label class="form-label required">เวลาเริ่ม</label><input type="time" id="e_start" class="form-input" value="${b.startTime}" /></div>
       <div class="form-group"><label class="form-label required">เวลาสิ้นสุด</label><input type="time" id="e_end" class="form-input" value="${b.endTime}" /></div>
     </div>
-    <div class="form-group"><label class="form-label required">จำนวนผู้ใช้ห้อง (คน)</label><input id="e_students" class="form-input" type="number" value="${b.studentCount || ''}" /></div>
+    <div class="form-group"><label class="form-label required">จำนวนผู้ใช้ห้อง (คน)</label><input id="e_students" class="form-input" type="number" value="${escapeHtml(b.studentCount || '')}" /></div>
     <div class="form-group"><label class="form-label required">ระดับชั้น / กลุ่มผู้ใช้</label><input id="e_grade" class="form-input" value="${escapeHtml(b.grade || '')}" /></div>
     <div class="form-group"><label class="form-label required">รูปแบบการจัดห้อง</label><input id="e_layout" class="form-input" value="${escapeHtml(b.roomLayout || '')}" /></div>
   `;
@@ -3238,7 +3322,7 @@ async function saveEdit() {
         const latest = hasConflict(updated, id);
         if (latest) showEditConflict(latest);
         else showToast('ช่วงเวลานี้เพิ่งถูกจองไปเมื่อสักครู่ กรุณาเลือกเวลาหรือห้องอื่น', 'error');
-      } else {
+      } else if (!lastCloudError || lastCloudError.message !== 'not_admin') {
         showToast('บันทึกการแก้ไขไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง', 'error');
       }
       return;
@@ -3922,7 +4006,7 @@ function openPrintPreview(b, cancelCode = null) {
         <tr><td class="slip-label">ฝ่ายงาน</td><td>${escapeHtml(b.department || '-')}</td></tr>
         <tr><td class="slip-label">ห้องที่จอง</td><td><strong>${escapeHtml(b.room)}</strong></td></tr>
         <tr><td class="slip-label">วัตถุประสงค์</td><td>${escapeHtml(b.purpose || '-')}</td></tr>
-        <tr><td class="slip-label">จำนวนผู้ใช้ห้อง</td><td>${b.studentCount || '–'} คน</td></tr>
+        <tr><td class="slip-label">จำนวนผู้ใช้ห้อง</td><td>${escapeHtml(b.studentCount || '–')} คน</td></tr>
         <tr><td class="slip-label">ระดับชั้น / กลุ่มผู้ใช้</td><td>${escapeHtml(b.grade || '–')}</td></tr>
         <tr><td class="slip-label">วันที่ใช้</td><td>${formatDateThai(b.bookingDate)}</td></tr>
         <tr><td class="slip-label">เวลา</td><td>${b.startTime}–${b.endTime} น.</td></tr>
@@ -4755,6 +4839,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load bookings from Cloud on start
   fetchGoogleSheetsBookings();
+
+  // รหัสแอดมินแบบเก่าที่เคยเก็บในเครื่อง ไม่ใช้แล้ว (ล็อกอินผ่าน Supabase Auth)
+  localStorage.removeItem('pccpl_admin_pass');
+  restoreAdminSession();
 
   // Instant re-sync เมื่อสลับแท็บหรือคลิกกลับมาที่หน้าต่างเบราว์เซอร์
   window.addEventListener('focus', () => fetchGoogleSheetsBookings(true));

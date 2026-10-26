@@ -28,7 +28,11 @@ if (typeof supabase !== 'undefined' && typeof supabase.createClient === 'functio
   if (isSupabaseConfigured) {
     try {
       const cleanUrl = SUPABASE_URL.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-      supabaseClient = supabase.createClient(cleanUrl, SUPABASE_ANON_KEY.trim());
+      // การล็อกอินแอดมินเก็บใน sessionStorage: รีเฟรชหน้ายังล็อกอินอยู่ แต่ปิดเบราว์เซอร์แล้วต้องล็อกอินใหม่
+      // (กันลืมออกจากระบบบนเครื่องส่วนกลาง)
+      supabaseClient = supabase.createClient(cleanUrl, SUPABASE_ANON_KEY.trim(), {
+        auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true },
+      });
       console.log("✅ Supabase Client Initialized Successfully!");
     } catch (err) {
       console.error("❌ Supabase Init Error:", err);

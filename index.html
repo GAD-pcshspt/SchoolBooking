@@ -1016,7 +1016,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">รหัสผ่านใหม่</label>
-            <input type="password" id="pwdNew" class="form-input" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" />
+            <input type="password" id="pwdNew" class="form-input" placeholder="รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)" />
           </div>
           <div class="form-group">
             <label class="form-label">ยืนยันรหัสผ่านใหม่</label>
@@ -1099,19 +1099,19 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="adminUser" class="form-label">ชื่อผู้ใช้</label>
-          <input type="text" id="adminUser" class="form-input" placeholder="Username" />
+          <label for="adminUser" class="form-label">อีเมล</label>
+          <input type="email" id="adminUser" class="form-input" placeholder="อีเมลแอดมิน" autocomplete="username" />
         </div>
         <div class="form-group">
           <label for="adminPass" class="form-label">รหัสผ่าน</label>
-          <input type="password" id="adminPass" class="form-input" placeholder="Password"
+          <input type="password" id="adminPass" class="form-input" placeholder="รหัสผ่าน" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')doAdminLogin()" />
         </div>
         <span class="field-error" id="errLogin"></span>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeAdminLogin()">ยกเลิก</button>
-        <button class="btn-primary" onclick="doAdminLogin()">เข้าสู่ระบบ</button>
+        <button class="btn-primary" id="btnAdminLoginSubmit" onclick="doAdminLogin()">เข้าสู่ระบบ</button>
       </div>
     </div>
   </div>
@@ -1569,8 +1569,8 @@
   <!-- Chart.js, Supabase Client & App Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20261010_9"></script>
-  <script src="app.js?v=20261026_8"></script>
+  <script src="supabase-config.js?v=20261027_1"></script>
+  <script src="app.js?v=20261027_1"></script>
   <script src="venues.js?v=20261025_1"></script>
   <script src="multiday.js?v=20261026_1"></script>
   <script src="cancel.js?v=20261026_1"></script>
