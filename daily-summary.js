@@ -215,6 +215,25 @@ function dsRoundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// วาดข้อความโดยคำนวณตำแหน่งเอง ไม่พึ่ง ctx.textAlign (Safari บน iPhone/iPad วางข้อความกึ่งกลาง/ชิดขวาผิด)
+// maxWidth: ถ้ายาวเกิน จะย่อตัวอักษรลงจนพอดีช่อง
+function dsFill(ctx, text, x, y, align = 'left', maxWidth = 0) {
+  const baseFont = ctx.font;
+  let w = ctx.measureText(text).width;
+  if (maxWidth && w > maxWidth) {
+    let size = parseFloat((baseFont.match(/(\d+(?:\.\d+)?)px/) || [])[1]) || 16;
+    while (w > maxWidth && size > 10) {
+      size -= 0.5;
+      ctx.font = baseFont.replace(/\d+(?:\.\d+)?px/, `${size}px`);
+      w = ctx.measureText(text).width;
+    }
+  }
+  const left = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+  ctx.textAlign = 'left';
+  ctx.fillText(text, left, y);
+  ctx.font = baseFont;
+}
+
 function drawDailySummary(date, items, logo) {
   const { width: W, pad } = DS;
   const tableW = W - pad * 2;
@@ -277,28 +296,29 @@ function drawDailySummary(date, items, logo) {
     ctx.drawImage(logo, pad + 10, 40, lw, lh);
     textX = pad + lw + 44;
   }
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `600 34px ${DS.head}`;
-  ctx.fillText('สรุปการจองสถานที่ประจำวัน', textX, 62);
-  const d = new Date(`${date}T00:00:00`);
-  ctx.fillStyle = '#fdba74';
-  ctx.font = `500 24px ${DS.head}`;
-  ctx.fillText(`วัน${THAI_DAY_NAMES[d.getDay()]}ที่ ${formatDateThai(date)}`, textX, 104);
-  ctx.fillStyle = 'rgba(255,255,255,.75)';
-  ctx.font = `400 16px ${DS.font}`;
-  ctx.fillText('งานอาคารและสถานที่ ฝ่ายบริหารงานทั่วไป · โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี', textX, 138);
-
-  // จำนวนรายการ (มุมขวา)
+  // จำนวนรายการ (มุมขวา) วัดก่อน เพื่อเว้นที่ให้หัวข้อทางซ้าย
   const countText = `${items.length} รายการ`;
   ctx.font = `600 20px ${DS.head}`;
   const cw = ctx.measureText(countText).width + 40;
+  const titleMax = W - pad - cw - 24 - textX;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `600 34px ${DS.head}`;
+  dsFill(ctx, 'สรุปการจองสถานที่ประจำวัน', textX, 62, 'left', titleMax);
+  const d = new Date(`${date}T00:00:00`);
+  ctx.fillStyle = '#fdba74';
+  ctx.font = `500 24px ${DS.head}`;
+  dsFill(ctx, `วัน${THAI_DAY_NAMES[d.getDay()]}ที่ ${formatDateThai(date)}`, textX, 104, 'left', titleMax);
+  ctx.fillStyle = 'rgba(255,255,255,.75)';
+  ctx.font = `400 16px ${DS.font}`;
+  dsFill(ctx, 'งานอาคารและสถานที่ ฝ่ายบริหารงานทั่วไป · โรงเรียนวิทยาศาสตร์จุฬาภรณราชวิทยาลัย ปทุมธานี', textX, 138, 'left', W - pad - textX);
+
+  ctx.font = `600 20px ${DS.head}`;
   ctx.fillStyle = 'rgba(255,255,255,.14)';
   dsRoundRect(ctx, W - pad - cw, 46, cw, 44, 22);
   ctx.fill();
   ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.fillText(countText, W - pad - cw / 2, 69);
+  dsFill(ctx, countText, W - pad - cw / 2, 69, 'center');
 
   // การ์ดตาราง
   const tableY = headerH + 36;
@@ -322,19 +342,17 @@ function drawDailySummary(date, items, logo) {
   ctx.fillStyle = DS.ink;
   let x = pad;
   DS.cols.forEach((c, i) => {
-    ctx.textAlign = c[2];
     const tx = c[2] === 'center' ? x + widths[i] / 2 : x + cellPadX;
-    ctx.fillText(c[0], tx, tableY + theadH / 2 + 1);
+    dsFill(ctx, c[0], tx, tableY + theadH / 2 + 1, c[2], widths[i] - cellPadX);
     x += widths[i];
   });
 
   // แถวข้อมูล
   let y = tableY + theadH;
   if (!rows.length) {
-    ctx.textAlign = 'center';
     ctx.fillStyle = DS.muted;
     ctx.font = `400 20px ${DS.font}`;
-    ctx.fillText('ไม่มีรายการจองสถานที่ในวันนี้', W / 2, y + bodyH / 2);
+    dsFill(ctx, 'ไม่มีรายการจองสถานที่ในวันนี้', W / 2, y + bodyH / 2, 'center');
   }
   rows.forEach((r, ri) => {
     if (ri % 2) {
@@ -346,7 +364,6 @@ function drawDailySummary(date, items, logo) {
     let cx = pad;
     r.lines.forEach((lines, ci) => {
       const align = DS.cols[ci][2];
-      ctx.textAlign = align;
       const bold = ci === 1 || ci === 2 || ci === 6;
       ctx.font = `${bold ? 600 : 400} 18px ${DS.font}`;
       ctx.fillStyle = ci === 6 ? '#c2410c' : ci === 0 ? '#94a3b8' : DS.ink;
@@ -354,7 +371,7 @@ function drawDailySummary(date, items, logo) {
       const startY = y + (r.h - blockH) / 2 + lineH / 2;
       lines.forEach((ln, li) => {
         const tx = align === 'center' ? cx + widths[ci] / 2 : cx + cellPadX;
-        ctx.fillText(ln, tx, startY + li * lineH);
+        dsFill(ctx, ln, tx, startY + li * lineH, align, widths[ci] - cellPadX * 2);
       });
       cx += widths[ci];
     });
@@ -364,14 +381,14 @@ function drawDailySummary(date, items, logo) {
 
   // ท้ายรูป
   const now = new Date();
-  ctx.textAlign = 'left';
-  ctx.fillStyle = DS.muted;
-  ctx.font = `400 15px ${DS.font}`;
-  ctx.fillText(`ข้อมูล ณ ${formatDateThai(toDateStr(now))} เวลา ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น. · ระบบจองสถานที่ งานอาคารและสถานที่`, pad, H - 44);
-  ctx.textAlign = 'right';
   ctx.fillStyle = '#2563eb';
   ctx.font = `600 15px ${DS.head}`;
-  ctx.fillText('เฉพาะรายการที่จองอยู่ (ไม่รวมที่ยกเลิก)', W - pad, H - 44);
+  const noteText = 'เฉพาะรายการที่จองอยู่ (ไม่รวมที่ยกเลิก)';
+  const noteW = ctx.measureText(noteText).width;
+  dsFill(ctx, noteText, W - pad, H - 44, 'right');
+  ctx.fillStyle = DS.muted;
+  ctx.font = `400 15px ${DS.font}`;
+  dsFill(ctx, `ข้อมูล ณ ${formatDateThai(toDateStr(now))} เวลา ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น. · ระบบจองสถานที่ งานอาคารและสถานที่`, pad, H - 44, 'left', tableW - noteW - 24);
 
   return canvas;
 }
