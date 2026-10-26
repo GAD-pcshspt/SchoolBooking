@@ -1,0 +1,37 @@
+# กันฐานข้อมูล Supabase (แพ็กเกจฟรี) หยุดชั่วคราวเมื่อไม่มีคนใช้ 7 วัน เช่น ช่วงปิดเทอม
+# GitHub จะเรียกอ่านข้อมูล 1 ครั้งทุกเช้า 06:00 น. (เวลาไทย) ไม่เสียเงิน ไม่ต้องดูแล
+# กดรันเองได้ที่แท็บ Actions → Keep Supabase awake → Run workflow
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 23:00 UTC = 06:00 น. เวลาไทย
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ใช้ URL และกุญแจสาธารณะ (publishable key) ตัวเดียวกับหน้าเว็บ จาก supabase-config.js
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -oP 'SUPABASE_URL\s*=\s*"\K[^"]+' supabase-config.js)
+          KEY=$(grep -oP 'SUPABASE_ANON_KEY\s*=\s*"\K[^"]+' supabase-config.js)
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' \
+            "$URL/rest/v1/bookings?select=id&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "Supabase responded: $STATUS"
+          test "$STATUS" = "200"
+
+      # GitHub ปิดงานตั้งเวลาอัตโนมัติถ้า repo ไม่มีความเคลื่อนไหว 60 วัน
+      # ขั้นนี้สั่งเปิดงานนี้ซ้ำทุกครั้งที่รัน เพื่อลดโอกาสถูกปิดช่วงปิดเทอมยาว
+      - name: Keep this schedule enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keep-supabase-awake.yml/enable" || true

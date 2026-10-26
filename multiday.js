@@ -552,6 +552,7 @@ async function submitMultiDayBooking(base) {
     </div>
   `;
   document.getElementById('successModal').classList.remove('hidden');
+  queueFlyToCalendar(created);
 
   clearForm();
   renderCalendar();

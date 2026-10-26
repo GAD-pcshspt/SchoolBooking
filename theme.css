@@ -1067,7 +1067,7 @@ body { font-family: var(--font-body); font-weight: 400; }
 .topbar .btn-nav-refresh:hover { background: #f1f5f9; }
 .nav-burger span { background: #0f2444; }
 .topbar .btn-admin-login { border-color: #cbd5e1; background: #fff; color: #0f2444; }
-.topbar .btn-admin-login:hover { background: #f1f5f9; }
+.topbar .btn-admin-login:not(.logged-in):hover { background: #f1f5f9; }
 .topbar .btn-admin-login.logged-in { color: #fff; }
 .nav-ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 .nav-caret { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -1076,7 +1076,8 @@ body { font-family: var(--font-body); font-weight: 400; }
 @media (min-width: 981px) {
   .topbar .main-nav { gap: 6px; }
   .topbar .main-nav .nav-link { color: #334155; }
-  .topbar .main-nav .nav-link:hover { color: #0f2444; background: #f1f5f9; }
+  /* ไม่ใช้กับปุ่มเด่นส้ม/น้ำเงิน: บน iPad สถานะ hover ค้างหลังแตะ ทำให้พื้นปุ่มกลายเป็นเทาอ่อน ตัวหนังสือขาวหายไป */
+  .topbar .main-nav .nav-link:not(.nav-cta):hover { color: #0f2444; background: #f1f5f9; }
   .topbar .main-nav .nav-link.active { color: #0f2444; }
   .topbar .main-nav .nav-drop-menu .nav-link { gap: 10px; }
   .topbar .main-nav .nav-drop-menu .nav-link:hover,
@@ -1598,4 +1599,79 @@ h1, h2, h3, h4, h5,
 }
 /* รีเฟรชข้อมูลเบื้องหลัง: ไม่เล่นแอนิเมชันซ้ำ (กันจอกระพริบ) */
 .cl-static .cl-group,
-.cl-static .lb-list.animate .lb-item { animation: none !important; }
+.cl-static .lb-list.animate .lb-item:not(.just-booked) { animation: none !important; }
+/* ---------- หลังจองเสร็จ: การ์ดบินไปลงปฏิทิน + ไฮไลต์รายการที่เพิ่งจอง ---------- */
+.fly-ghost {
+  position: fixed;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  overflow: hidden;
+  color: var(--head-ink, #0f1d42);
+  background: #fff;
+  border: 1.5px solid #93c5fd;
+  box-shadow: 0 28px 60px -16px rgba(30, 58, 138, .45), 0 0 0 6px rgba(59, 130, 246, .12);
+  pointer-events: none;
+}
+.fly-ghost .fly-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 6px 14px -6px rgba(22, 163, 74, .7);
+}
+.fly-ghost .fly-text { display: flex; flex-direction: column; min-width: 0; }
+.fly-ghost b, .fly-ghost small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fly-ghost b { font-family: var(--font-head); font-size: 1rem; }
+.fly-ghost small { color: #64748b; font-size: .8rem; }
+
+.lb-item.fly-pending { visibility: hidden; }
+.lb-item.fly-landed { animation: jbLand .6s var(--ease-out) both !important; }
+@keyframes jbLand { 0% { transform: scale(.96); } 55% { transform: scale(1.025); } 100% { transform: none; } }
+
+.lb-item.just-booked,
+.lb-list.animate .lb-item.just-booked {
+  border-color: #93c5fd;
+  background: linear-gradient(135deg, #eff6ff, #fff 60%);
+  animation: jbGlow 1.8s ease-out 4;
+}
+@keyframes jbGlow {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .45); }
+  100% { box-shadow: 0 0 0 14px rgba(37, 99, 235, 0); }
+}
+.jb-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 600;
+  vertical-align: 2px;
+  box-shadow: 0 4px 10px -4px rgba(37, 99, 235, .6);
+}
+.cal-booking-chip.just-booked {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+  animation: jbGlow 1.8s ease-out 4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-item.just-booked, .cal-booking-chip.just-booked, .lb-item.fly-landed { animation: none !important; }
+}
+/* จอสัมผัส (iPad/มือถือ): ไม่ใช้เอฟเฟค hover ที่ค้างหลังแตะ ใช้เอฟเฟคตอนกดแทน */
+@media (hover: none) {
+  .topbar .main-nav .nav-cta:hover,
+  .bar-cta:hover { transform: none; filter: none; }
+  .topbar .main-nav .nav-cta:active,
+  .bar-cta:active { transform: scale(.96); filter: brightness(.95); }
+}

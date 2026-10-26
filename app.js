@@ -2378,6 +2378,7 @@ async function submitBooking(event) {
     `จอง "${roomSelection.roomString}" วันที่ ${formatDateThai(bookingDate)} เวลา ${startTime}–${endTime} น. สำเร็จแล้ว!`;
   if (typeof renderSuccessCode === 'function') renderSuccessCode(cancelCode);
   document.getElementById('successModal').classList.remove('hidden');
+  queueFlyToCalendar([newBooking]);
 
   clearForm();
   renderCalendar();
@@ -2440,7 +2441,90 @@ function clearForm() {
   refreshAllFormOptions();
   clearErrors();
 }
-function closeSuccess()  { document.getElementById('successModal').classList.add('hidden'); }
+// ------------------------------------------------------------
+// หลังจองเสร็จ: ปิดหน้าต่างแล้วการ์ดบินไปลงรายการจริงในปฏิทิน ยืนยันว่าขึ้นระบบแล้ว
+// (รอให้ปิดหน้าต่างก่อน เพราะต้องเซฟรหัสยกเลิก 6 หลัก)
+// ------------------------------------------------------------
+const JUST_BOOKED_MS = 10 * 60 * 1000;
+let justBooked = { ids: new Set(), until: 0 };
+let pendingFlight = null;
+
+function isJustBooked(id) {
+  return Date.now() < justBooked.until && justBooked.ids.has(String(id));
+}
+
+function queueFlyToCalendar(list) {
+  const items = (list || []).filter(b => b && b.bookingDate);
+  if (!items.length) return;
+  justBooked = { ids: new Set(items.map(b => String(b.id))), until: Date.now() + JUST_BOOKED_MS };
+  pendingFlight = items;
+}
+
+function closeSuccess() {
+  const modal = document.getElementById('successModal');
+  const box = modal.querySelector('.modal-box');
+  const fromRect = !modal.classList.contains('hidden') && box ? box.getBoundingClientRect() : null;
+  modal.classList.add('hidden');
+  if (pendingFlight) {
+    const items = pendingFlight;
+    pendingFlight = null;
+    flyToCalendar(items, fromRect);
+  }
+}
+
+function flyToCalendar(items, fromRect) {
+  const first = [...items].sort((a, b) => (a.bookingDate + a.startTime).localeCompare(b.bookingDate + b.startTime))[0];
+  const [y, m] = first.bookingDate.split('-').map(Number);
+  const filter = document.getElementById('filterRoom');
+  if (filter) filter.value = '';
+  state.calYear = y;
+  state.calMonth = m - 1;
+  state.calListSelectedDate = items.length === 1 ? first.bookingDate : '';
+  showPage('calendar');
+  setCalViewMode('list');
+
+  // ไม่เล่นแอนิเมชันเลื่อนขึ้นของการ์ด เพื่อให้ตำแหน่งปลายทางนิ่ง
+  const container = document.getElementById('calendarListContainer') || document.getElementById('calendarListView');
+  if (container) container.classList.add('cl-static');
+  const target = [...document.querySelectorAll('#calendarListView .lb-item')].find(el => el.dataset.bid === String(first.id));
+  if (!target) return;
+  target.scrollIntoView({ block: 'center', behavior: 'instant' });
+
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!fromRect || reduceMotion || typeof target.animate !== 'function') return;
+
+  const to = target.getBoundingClientRect();
+  const ghost = document.createElement('div');
+  ghost.className = 'fly-ghost';
+  ghost.innerHTML = `
+    <span class="fly-check">✓</span>
+    <span class="fly-text"><b>${escapeHtml(first.room)}</b><small>${escapeHtml(first.startTime)}–${escapeHtml(first.endTime)} น. · ${escapeHtml(first.fullName)}</small></span>`;
+  document.body.appendChild(ghost);
+  target.classList.add('fly-pending');
+
+  // 1) หน้าต่างย่อเป็นการ์ดเล็กกลางจุดเดิม  2) โค้งขึ้นเล็กน้อย  3) ขยายลงพอดีรายการจริง
+  const box = (left, top, width, height) => ({ left: `${left}px`, top: `${top}px`, width: `${width}px`, height: `${height}px` });
+  const cardW = Math.min(to.width, 360);
+  const cardH = Math.min(to.height, 76);
+  const fromCx = fromRect.left + fromRect.width / 2;
+  const fromCy = fromRect.top + fromRect.height / 2;
+  const toCx = to.left + to.width / 2;
+  const toCy = to.top + to.height / 2;
+  const arcY = Math.min(fromCy, toCy) - 60;
+  const flight = ghost.animate([
+    { ...box(fromRect.left, fromRect.top, fromRect.width, fromRect.height), borderRadius: '28px', backgroundColor: '#ffffff', offset: 0 },
+    { ...box(fromCx - cardW / 2, fromCy - cardH / 2, cardW, cardH), borderRadius: '20px', backgroundColor: '#ffffff', offset: 0.3 },
+    { ...box((fromCx + toCx) / 2 - cardW / 2, arcY - cardH / 2, cardW, cardH), borderRadius: '20px', backgroundColor: '#f8fbff', offset: 0.62 },
+    { ...box(to.left, to.top, to.width, to.height), borderRadius: '18px', backgroundColor: '#eff6ff', offset: 1 },
+  ], { duration: 1000, easing: 'cubic-bezier(.55, 0, .3, 1)', fill: 'forwards' });
+
+  flight.onfinish = () => {
+    ghost.remove();
+    target.classList.remove('fly-pending');
+    target.classList.add('fly-landed');
+    setTimeout(() => target.classList.remove('fly-landed'), 900);
+  };
+}
 function closeConflict() { document.getElementById('conflictModal').classList.add('hidden'); }
 
 function printCurrentBooking() {
@@ -2797,11 +2881,11 @@ function calListGroupHtml(dateStr, items, groupIndex) {
       pill = '<span class="lb-pill soon">จองแล้ว</span>';
     }
     return `
-      <button type="button" class="lb-item ${state}" style="--i:${i}" onclick="viewBookingDetail('${escapeHtml(String(b.id))}')">
+      <button type="button" class="lb-item ${state}${isJustBooked(b.id) ? ' just-booked' : ''}" style="--i:${i}" data-bid="${escapeHtml(String(b.id))}" onclick="viewBookingDetail('${escapeHtml(String(b.id))}')">
         <div class="lb-time"><b>${escapeHtml(b.startTime)}</b><small>${escapeHtml(b.endTime)}</small></div>
         <div class="lb-rail"><span></span></div>
         <div class="lb-body">
-          <div class="lb-room">📍 ${escapeHtml(b.room)}</div>
+          <div class="lb-room">📍 ${escapeHtml(b.room)}${isJustBooked(b.id) ? '<span class="jb-badge">✨ เพิ่งจอง</span>' : ''}</div>
           <div class="lb-purpose">${escapeHtml(b.purpose || '–')}</div>
           <div class="lb-who cl-who"><span class="cl-who-name">👤 ${escapeHtml(b.fullName || '–')}</span>${b.studentCount ? `<span class="cl-who-count">&nbsp;· ${escapeHtml(b.studentCount)} คน</span>` : ''}</div>
           ${progress}
@@ -2878,7 +2962,7 @@ function createDayCell(date, bookings, today, otherMonth) {
         .slice(0, maxDisplayChips)
         .forEach(b => {
           const chip = document.createElement('div');
-          chip.className = `cal-booking-chip ${b.status}`;
+          chip.className = `cal-booking-chip ${b.status}${isJustBooked(b.id) ? ' just-booked' : ''}`;
           chip.innerHTML = `
             <span class="chip-room">📍 ${escapeHtml(b.room)}</span>
             <span class="chip-meta">⏰ ${escapeHtml(b.startTime)}–${escapeHtml(b.endTime)} น.</span>
@@ -4825,6 +4909,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', function(e) {
       if (e.target === this) {
+        if (id === 'successModal') { closeSuccess(); return; }
         this.classList.add('hidden');
         if (id === 'editModal') state.editingId = null;
       }
